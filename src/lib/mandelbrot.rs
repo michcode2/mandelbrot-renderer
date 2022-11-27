@@ -4,6 +4,8 @@ use std::io::prelude::*;
 use std::net::TcpListener;
 use std::sync::mpsc;
 use threadpool::ThreadPool;
+use std::time::Duration;
+use std::thread;
 
 #[derive(Debug)]
 pub struct Parameters{
@@ -144,7 +146,7 @@ pub fn multi_calculate(parameters: &Parameters) -> String {
 	let height = (2.0 * parameters.radius_x * parameters.zoom) as usize;
 	let width = (2.0 * parameters.radius_y * parameters.zoom) as usize;
 	
-	let mut storage = vec![vec![0]];
+	let mut storage = vec![vec![0; height + 1]; width + 1];
 	
 	let high_x = parameters.low_x + parameters.radius_x * 2.0;
 	let high_y = parameters.low_y + parameters.radius_y * 2.0;
@@ -171,18 +173,30 @@ pub fn multi_calculate(parameters: &Parameters) -> String {
 		}
 	}
 	pool.join();
-	println!("pool dropping");
-	drop(pool);
-	let mut x = 0;
-	let mut last_imag = f64::MIN;
+	drop(tx);
+
+	let real_step = (2.0 * parameters.radius_x)/height as f64;
+	let imag_step = (2.0 * parameters.radius_y)/width as f64;
 	for thing in rx{
-		storage[x].push(thing.value);
-		if last_imag > thing.imag{
-			x += 1;
-			storage.push(vec![0]);
-		}
-		last_imag = thing.imag;
+		let index_x = ((thing.real - parameters.low_x) / real_step) as usize;
+		let index_y = ((thing.imag - parameters.low_y) / imag_step) as usize;
+		
+		storage[index_x][index_y] = thing.value;
 	}
-	println!("{:?} done", storage);
-	String::from("cock")
+	
+	let mut out = String::from("");
+	
+	for x in 0..width as usize{
+		for y in 0..height as usize{
+			out = out + &storage[y][x].to_string();
+			out = out + ",";
+		}
+		out += "\n";
+	}
+	out = out + &width.to_string();
+    out = out + ",";
+    out = out+ &height.to_string();
+	out = out + "d";
+	out
+	
 }

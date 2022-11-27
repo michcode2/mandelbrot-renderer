@@ -4,7 +4,6 @@ use egui_extras;
 use std::cmp::{min, max};
 
 fn main() {
-	/*
 	println!("{}", min(1,2));
 	let options = eframe::NativeOptions::default();
 	eframe::run_native(
@@ -12,15 +11,13 @@ fn main() {
 		options,
 		Box::new(|_cc| Box::new(App::default())),
     );
-	*/
-	test_multicalculate();
 }
 
 fn test_multicalculate() {
 	let params = mandelbrot::Parameters{
 		zoom: 70.0,
-		low_x: 0.013,
-		low_y: 0.286,
+		low_x: 0.25,
+		low_y: 0.0,
 		radius_x: 0.5,
 		radius_y: 0.5,
 		quality: 80,
@@ -49,12 +46,12 @@ impl Default for App{
 		Self {
 			params: mandelbrot::Parameters{
 				zoom: 70.0,
-				low_x: 0.013,
-				low_y: 0.286,
+				low_x: 0.25,
+				low_y: 0.,
 				radius_x: 2.0,
 				radius_y: 2.0,
 				quality: 80,
-				bound: 1000.0,
+				bound: 100.0,
 	
 			},
 			gamma: 0,
@@ -83,18 +80,18 @@ impl eframe::App for App {
 			ui.label(format!("x: {}, y: {}", self.params.low_x, self.params.low_y));
 			ui.horizontal(|ui| {
 			if ui.button("left").clicked() {
-				self.params.low_y -= self.params.radius_y * 0.2;
+				self.params.low_x -= self.params.radius_x * 0.2;
 			}
 			ui.vertical(|ui| {
 				if ui.button("up").clicked() {
-					self.params.low_x -= self.params.radius_x * 0.2;
+					self.params.low_y -= self.params.radius_y * 0.2;
 				}
 				if ui.button("down").clicked() {
-					self.params.low_x += self.params.radius_x * 0.2;
+					self.params.low_y += self.params.radius_y * 0.2;
 				}
 			});
 			if ui.button("right").clicked() {
-				self.params.low_y += self.params.radius_y * 0.2;
+				self.params.low_x += self.params.radius_x * 0.2;
 			}
 			});
 			
@@ -138,10 +135,10 @@ impl eframe::App for App {
 			
 			ui.horizontal(|ui| {
 				if ui.button("increase bound").clicked() {
-					self.params.bound += 10.0;
+					self.params.bound += 50.0;
 				}
 				if ui.button("decrease bound").clicked() {
-					self.params.bound -= 10.0;
+					self.params.bound -= 50.0;
 				}
 				ui.label(format!("{}", self.params.bound));
 			});
@@ -170,7 +167,8 @@ fn lerp(vals: &FourValues, to_map: &usize) -> f64{
 } 
 
 fn get_data(params: &mandelbrot::Parameters) -> String{
-	mandelbrot::write_to_file(params)
+	mandelbrot::multi_calculate(params)
+	//mandelbrot::write_to_file(params)
 }
 
 fn render_image(data: String, gamma: usize) -> egui::ColorImage{
@@ -180,7 +178,7 @@ fn render_image(data: String, gamma: usize) -> egui::ColorImage{
 
 	let mut image_buffer: Vec<u8> = vec!(); 
 	
-	let map_consts = FourValues{
+	let trig_consts = FourValues{
 		min_in: 0.0,
 		max_in: 255.0,
 		min_out: 0.0,
@@ -192,11 +190,11 @@ fn render_image(data: String, gamma: usize) -> egui::ColorImage{
 		for y in 0..height{
 			let mut value: usize = array[x as usize][y as usize].into();
 			value = value.checked_sub(gamma).unwrap_or_else(|| 0);
-			let lerped = lerp(&map_consts, &value);			
+			let lerped = lerp(&trig_consts, &value);			
 			let r: u8 = (lerped.sin() * 255.0) as u8;
 			//let r: u8 = (min(value, 255)).try_into().unwrap_or_else(|_| u8::MAX);
 			let g: u8 = (min(value, 255)).try_into().unwrap_or_else(|_| u8::MAX);
-			let b: u8 = (max(2 * value as isize - 255 , 0)).try_into().unwrap_or_else(|_| 254)+1;
+			let b: u8 = ((lerped + 50.0).sin() * 255.0) as u8;
 
 			image_buffer.push(r);
 			image_buffer.push(g);
