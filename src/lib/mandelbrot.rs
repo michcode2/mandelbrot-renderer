@@ -4,8 +4,7 @@ use std::io::prelude::*;
 use std::net::TcpListener;
 use std::sync::mpsc;
 use threadpool::ThreadPool;
-use std::time::Duration;
-use std::thread;
+use num::abs;
 
 #[derive(Debug)]
 pub struct Parameters{
@@ -90,6 +89,27 @@ fn bounded(c: &Complex<f64>, iterations: isize, bound: f64) -> isize{
     }
 }
 
+fn bounded_test(c: &Complex<f64>, iterations: isize, bound: f64) -> isize{
+
+    let mut z = Complex::new(0.0, 0.0);
+
+    let mut i = 0;
+	let mut last_z;
+    loop{
+		last_z = z;
+        z = (z * z) + c;
+		// the path the code takes if it diverges to infinity
+        if abs(last_z.norm() - z.norm()) > bound {
+            return i;
+        }
+		// the path the code takes if it stays bounded
+        if i >= iterations{
+            return -1;
+        }
+        i+=1;
+    }
+}
+
 fn calculate(parameters: &Parameters) -> String {
     let low_x = parameters.low_x;
     let high_x = low_x + 2.0 * parameters.radius_x;
@@ -151,7 +171,7 @@ pub fn multi_calculate(parameters: &Parameters) -> String {
 	let high_x = parameters.low_x + parameters.radius_x * 2.0;
 	let high_y = parameters.low_y + parameters.radius_y * 2.0;
 
-	let pool = ThreadPool::new(4);
+	let pool = ThreadPool::new(9);
 	let (tx, rx) = mpsc::channel();
 	
     let reals = linspace::<f64>(parameters.low_x,high_x,width);
@@ -166,7 +186,7 @@ pub fn multi_calculate(parameters: &Parameters) -> String {
 				let output = ValueAtPoint{
 					real: x,
 					imag: y, 
-					value: bounded(&c, quality, bound),
+					value: bounded_test(&c, quality, bound),
 				};
 				tx.send(output).expect("messages didnt send");
 			});

@@ -21,7 +21,7 @@ fn test_multicalculate() {
 		radius_x: 0.5,
 		radius_y: 0.5,
 		quality: 80,
-		bound: 1000.0,
+		bound: 50.0,
 	};
 	let output = mandelbrot::multi_calculate(&params);
 	println!("{output}");
@@ -46,12 +46,12 @@ impl Default for App{
 		Self {
 			params: mandelbrot::Parameters{
 				zoom: 70.0,
-				low_x: 0.25,
+				low_x: 0.,
 				low_y: 0.,
 				radius_x: 2.0,
 				radius_y: 2.0,
-				quality: 80,
-				bound: 100.0,
+				quality: 255,
+				bound: 50.0,
 	
 			},
 			gamma: 0,
@@ -106,11 +106,9 @@ impl eframe::App for App {
 			ui.horizontal(|ui| {
 				if ui.button("increase quality").clicked() {
 					self.params.quality += 10;
-					self.gamma += 4;
 				}
 				if ui.button("decrease quality").clicked() {
 					self.params.quality -= 10;
-					self.gamma = self.gamma.checked_sub(2).unwrap_or_else(|| 0);
 				}
 				ui.label(format!("{}", self.params.quality));
 			});
@@ -135,10 +133,10 @@ impl eframe::App for App {
 			
 			ui.horizontal(|ui| {
 				if ui.button("increase bound").clicked() {
-					self.params.bound += 50.0;
+					self.params.bound += 5.0;
 				}
 				if ui.button("decrease bound").clicked() {
-					self.params.bound -= 50.0;
+					self.params.bound -= 5.0;
 				}
 				ui.label(format!("{}", self.params.bound));
 			});
@@ -161,8 +159,8 @@ impl eframe::App for App {
 
 fn lerp(vals: &FourValues, to_map: &usize) -> f64{
 	let value:f64 = *to_map as f64;
-	let numerator = vals.min_out * (vals.max_in - value) + vals.max_out * (value - vals.min_in);
-	let denominator = vals.max_in - vals.min_in;
+	let numerator = vals.max_out * value;
+	let denominator = vals.max_in;
 	numerator/denominator
 } 
 
@@ -182,7 +180,7 @@ fn render_image(data: String, gamma: usize) -> egui::ColorImage{
 		min_in: 0.0,
 		max_in: 255.0,
 		min_out: 0.0,
-		max_out: std::f64::consts::PI,
+		max_out:2.0 * std::f64::consts::PI,
 	};
 
 
@@ -192,9 +190,9 @@ fn render_image(data: String, gamma: usize) -> egui::ColorImage{
 			value = value.checked_sub(gamma).unwrap_or_else(|| 0);
 			let lerped = lerp(&trig_consts, &value);			
 			let r: u8 = (lerped.sin() * 255.0) as u8;
-			//let r: u8 = (min(value, 255)).try_into().unwrap_or_else(|_| u8::MAX);
-			let g: u8 = (min(value, 255)).try_into().unwrap_or_else(|_| u8::MAX);
-			let b: u8 = ((lerped + 50.0).sin() * 255.0) as u8;
+			let g: u8 = (((lerped/3.0)).sin() * 127.5) as u8;
+
+			let b: u8 = (-((lerped/3.0)+(std::f64::consts::PI/3.0)).cos() * 255.0) as u8;
 
 			image_buffer.push(r);
 			image_buffer.push(g);
