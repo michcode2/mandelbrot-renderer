@@ -1,10 +1,37 @@
 extern crate mandelbrot;
 use eframe::egui;
 use egui_extras;
-use std::cmp::{min, max};
 
 fn main() {
-	println!("{}", min(1,2));
+	let a = f64::powf(20.1, 0.5);
+	let r = 0.0019807040628566116* a;
+	let params = &mandelbrot::Parameters{
+		zoom: 70681.93710780267* a,
+		radius_x: r, 
+		radius_y: r,
+		low_x: -0.7333603088077273- r,
+		low_y: -0.15489114869489562- r,
+		quality: 2550,
+		bound: 5000.0,
+	};
+	
+	let amp = mandelbrot::initcolormap();
+	for i in 0..255{
+		println!("{:?}, {}", amp[i], i);
+	}
+
+	let a = mandelbrot::FourValues{
+		min_in: 1.0,
+		max_in: 9.0,
+		min_out: 10.0,
+		max_out: 30.0,
+	};
+	for i in 1..10{
+		println!("{}", a.lerp(&(i as f64)))
+	}
+
+	mandelbrot::output_image(params, 0, "".to_string());
+	mandelbrot::test_lerp();
 	let options = eframe::NativeOptions::default();
 	eframe::run_native(
 		"My egui App",
@@ -13,32 +40,10 @@ fn main() {
     );
 }
 
-fn test_multicalculate() {
-	let params = mandelbrot::Parameters{
-		zoom: 70.0,
-		low_x: 0.25,
-		low_y: 0.0,
-		radius_x: 0.5,
-		radius_y: 0.5,
-		quality: 80,
-		bound: 50.0,
-	};
-	let output = mandelbrot::multi_calculate(&params);
-	println!("{output}");
-			
-}
-
 struct App {
 	params: mandelbrot::Parameters,
-	gamma: usize,
-	//set: egui::Painter,
-}
-
-struct FourValues {
-	min_in: f64,
-	max_in: f64,
-	min_out: f64,
-	max_out: f64,
+	gamma: isize,
+	map: Vec<mandelbrot::ReturnColor>,
 }
 
 impl Default for App{
@@ -46,8 +51,8 @@ impl Default for App{
 		Self {
 			params: mandelbrot::Parameters{
 				zoom: 70.0,
-				low_x: 0.,
-				low_y: 0.,
+				low_x: -0.7321718863700132,
+				low_y: -0.15489114869489576,
 				radius_x: 2.0,
 				radius_y: 2.0,
 				quality: 255,
@@ -55,7 +60,7 @@ impl Default for App{
 	
 			},
 			gamma: 0,
-			//set: egui::Painter::new(),
+			map: mandelbrot::initcolormap(),
 		}
 	}
 }
@@ -126,7 +131,7 @@ impl eframe::App for App {
 					self.gamma += 2;
 				}
 				if ui.button("decrease gamma").clicked() {
-					self.gamma = self.gamma.checked_sub(2).unwrap_or_else(|| 0);
+					self.gamma -= 2;
 				}
 				ui.label(format!("{}", self.gamma));
 			});
@@ -145,10 +150,9 @@ impl eframe::App for App {
 			println!("{:?}\n {}", &self.params, self.gamma);
 			self.params.low_x -= self.params.radius_x;
 			self.params.low_y -= self.params.radius_y;
-			let display = egui_extras::image::RetainedImage::from_color_image("text", render_image(get_data(&self.params), self.gamma));
+			let display = egui_extras::image::RetainedImage::from_color_image("text", render_image(mandelbrot::multi_calculate(&self.params), self.gamma, &self.map));
 			self.params.low_x += self.params.radius_x;
 			self.params.low_y += self.params.radius_y;
-			
 			display.show(ui);
     	});    
 	}
@@ -157,73 +161,37 @@ impl eframe::App for App {
 
 }
 
-fn lerp(vals: &FourValues, to_map: &usize) -> f64{
-	let value:f64 = *to_map as f64;
-	let numerator = vals.max_out * value;
-	let denominator = vals.max_in;
-	numerator/denominator
-} 
-
-fn get_data(params: &mandelbrot::Parameters) -> String{
-	mandelbrot::multi_calculate(params)
-	//mandelbrot::write_to_file(params)
-}
-
-fn render_image(data: String, gamma: usize) -> egui::ColorImage{
-	let array = parse(data);
+fn render_image(data: String, gamma: isize, map: &Vec<mandelbrot::ReturnColor>) -> egui::ColorImage{
+	let array = mandelbrot::parse(data);
 	let width: u16 = array.len().try_into().unwrap_or_else(|_| u16::MAX);
 	let height: u16 = array[0].len().try_into().unwrap_or_else(|_| u16::MAX);
 
 	let mut image_buffer: Vec<u8> = vec!(); 
 	
-	let trig_consts = FourValues{
+	let pi = std::f64::consts::PI;
+
+	let trig_consts = mandelbrot::FourValues{
 		min_in: 0.0,
 		max_in: 255.0,
 		min_out: 0.0,
-		max_out:2.0 * std::f64::consts::PI,
+		max_out:2.0 * pi,
 	};
-
 
 	for x in 0..width{
 		for y in 0..height{
-			let mut value: usize = array[x as usize][y as usize].into();
-			value = value.checked_sub(gamma).unwrap_or_else(|| 0);
-			let lerped = lerp(&trig_consts, &value);			
-			let r: u8 = (lerped.sin() * 255.0) as u8;
-			let g: u8 = (((lerped/3.0)).sin() * 127.5) as u8;
+			let mut value: f64 = array[x as usize][y as usize].into();
+			value = value - gamma as f64;
+			//let lerped = trig_consts.lerp(&value);		
+			
+			let colors = mandelbrot::colormap(value, &map);
+			//let colors = mandelbrot::filter(value, lerped);
 
-			let b: u8 = (-((lerped/3.0)+(std::f64::consts::PI/3.0)).cos() * 255.0) as u8;
-
-			image_buffer.push(r);
-			image_buffer.push(g);
-			image_buffer.push(b);
+			image_buffer.push(colors.r);
+			image_buffer.push(colors.g);
+			image_buffer.push(colors.b);
 			image_buffer.push(255);
 	
 		}
 	}
 	egui::ColorImage::from_rgba_unmultiplied([width as usize, height as usize], &image_buffer)
-}
-
-fn parse(data: String) -> Vec<Vec<u8>>{
-	let lines = data.split("\n").collect::<Vec<&str>>();
-	
-	let last_line = lines[lines.len()-1].split(",").collect::<Vec<&str>>();
-	let width = last_line[0].parse::<usize>().unwrap();
-	
-	let mut height = last_line[1].to_string();
-	height.pop().unwrap();
-	let height = height.parse::<usize>().unwrap();
-	
-	let mut out: Vec<Vec<u8>> = vec!();
-
-	for i in 0..width{
-		out.push(vec!());
-		let values = lines[i].split(",").collect::<Vec<&str>>();
-		for j in 0..height{
-			out[i].push(values[j].parse::<u8>().unwrap_or_else(|_| 0 ));
-		}
-	}
-	
-
-	out
 }

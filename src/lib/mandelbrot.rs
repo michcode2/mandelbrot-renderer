@@ -5,6 +5,9 @@ use std::net::TcpListener;
 use std::sync::mpsc;
 use threadpool::ThreadPool;
 use num::abs;
+use image::RgbImage;
+//use Image::{Rgb, RgbImage};
+
 
 #[derive(Debug)]
 pub struct Parameters{
@@ -110,6 +113,178 @@ fn bounded_test(c: &Complex<f64>, iterations: isize, bound: f64) -> isize{
     }
 }
 
+#[derive(Debug)]
+#[derive(Copy)]
+#[derive(Clone)]
+pub struct ReturnColor {
+	pub r: u8,
+	pub g: u8,
+	pub b: u8,
+}
+
+#[derive(Debug)]
+pub struct FourValues{
+    pub min_in: f64,
+    pub max_in: f64,
+    pub min_out: f64,
+    pub max_out: f64,
+}
+
+impl FourValues{
+	pub fn lerp(&self, value: &f64) -> f64 {
+		let numerator = (self.min_out * (self.max_in - value)) + (self.max_out * (value - self.min_in));
+		let denominator = self.max_in - self.min_in;
+		numerator/denominator
+	}
+}
+
+pub fn filter(value: f64, lerped: f64) -> ReturnColor {
+	let r: u8 = ((lerped/4.0).sin()*255.0) as u8;
+	let b: u8 = (value) as u8;
+	let g: u8 = ((value/40.0).exp()) as u8;
+
+	ReturnColor{
+		r,
+		g,
+		b,
+	}
+}
+
+pub fn filter2(value: f64, lerped: f64) -> ReturnColor {
+	let r: u8 = ((lerped/4.0).sin()*255.0) as u8;
+	let b: u8 = (value) as u8;
+	let g: u8 = f64::ln((45.0*value)) as u8;
+
+	ReturnColor{
+		r,
+		g,
+		b,
+	}
+}
+
+pub fn initcolormap() -> Vec<ReturnColor> {
+	let rs: Vec<u8> = vec![];
+	let gs: Vec<u8> = vec![];
+	let bs: Vec<u8> = vec![];
+
+	let mut finals: Vec<ReturnColor> = vec![];	
+	
+	let stop1 = 255.0/3.0;
+	let stop2 = 2.0*255.0/3.0;
+
+	let block1 = [FourValues{
+		min_in: 0.0,
+		max_in: stop1,
+		min_out: 0.0,
+		max_out: 91.0,
+	},
+	FourValues{
+		min_in: 0.0,
+		max_in: stop1,
+		min_out: 0.0,
+		max_out: 206.0,
+			
+	},
+	FourValues{
+		min_in: 0.0,
+		max_in: stop1,
+		min_out: 0.0,
+		max_out: 250.0,
+	}	
+	];
+	
+	let block2 = [FourValues{
+		min_in: stop1,
+		max_in: stop2,
+		min_out: 91.0,
+		max_out: 245.0,
+	},
+	FourValues{
+		min_in: stop1,
+		max_in: stop2,
+		min_out: 206.0,
+		max_out: 169.0,
+			
+	},
+	FourValues{
+		min_in: stop1,
+		max_in: stop2,
+		min_out: 250.0,
+		max_out: 184.0,
+	}	
+	];
+	
+	let block3 = [FourValues{
+		min_in: stop2,
+		max_in: 255.0,
+		min_out: 245.0,
+		max_out: 255.0,
+	},
+	FourValues{
+		min_in: stop2,
+		max_in: 255.0,
+		min_out: 169.0,
+		max_out: 255.0,
+			
+	},
+	FourValues{
+		min_in: stop2,
+		max_in: 255.0,
+		min_out: 184.0,
+		max_out: 255.0,
+	}	
+	];
+
+	for i in 0..256 {
+		let i = i as f64;
+		if 0.0 <= i && i < stop1{
+			finals.push(ReturnColor{
+				r: block1[0].lerp(&i) as u8,
+				g: block1[1].lerp(&i) as u8,
+				b: block1[2].lerp(&i) as u8,
+			});
+		}
+		if stop1<= i && i < stop2{
+			finals.push(ReturnColor{
+				r: block2[0].lerp(&i) as u8,
+				g: block2[1].lerp(&i) as u8,
+				b: block2[2].lerp(&i) as u8,
+			});
+		
+		}
+		if i >= stop2{
+			println!("i: {}", i);
+			finals.push(ReturnColor{
+				r: block3[0].lerp(&i) as u8,
+				g: block3[1].lerp(&i) as u8,
+				b: block3[2].lerp(&i) as u8,
+			});
+	
+		}
+
+	}
+	return finals;
+}
+
+pub fn colormap(value: f64, map: &Vec<ReturnColor>) -> ReturnColor {
+	map[value as usize]
+}
+
+pub fn test_lerp(){
+	let map = initcolormap();
+	let mut values: Vec<u8> = vec![];
+	for i in 0..256{
+		let colors = colormap(i as f64, &map);
+		
+		values.push(colors.r);
+		values.push(colors.g);
+		values.push(colors.b);
+	}
+	
+	let out_image = RgbImage::from_raw(255, 1, values).unwrap();
+	out_image.save("./cmap.png").unwrap();	
+}
+
 fn calculate(parameters: &Parameters) -> String {
     let low_x = parameters.low_x;
     let high_x = low_x + 2.0 * parameters.radius_x;
@@ -144,7 +319,7 @@ BEST IDEA: READ THE FUCKING RUST DOCS messages seem useful :)
         for x in cs{
             let c = Complex::new(x, y);
             
-            results = results + &bounded(&c, parameters.quality, parameters.bound).to_string();
+            results = results + &bounded_test(&c, parameters.quality, parameters.bound).to_string();
             results = results + ",";
         }
 		results = results + "\n";
@@ -171,7 +346,7 @@ pub fn multi_calculate(parameters: &Parameters) -> String {
 	let high_x = parameters.low_x + parameters.radius_x * 2.0;
 	let high_y = parameters.low_y + parameters.radius_y * 2.0;
 
-	let pool = ThreadPool::new(9);
+	let pool = ThreadPool::new(4);
 	let (tx, rx) = mpsc::channel();
 	
     let reals = linspace::<f64>(parameters.low_x,high_x,width);
@@ -219,4 +394,66 @@ pub fn multi_calculate(parameters: &Parameters) -> String {
 	out = out + "d";
 	out
 	
+}
+
+pub fn output_image(params: &Parameters, gamma: isize, path: String) {
+	let map = initcolormap();
+	let string_values = multi_calculate(params);
+	let values = parse(string_values);
+
+	let width: u16 = values.len().try_into().unwrap_or_else(|_| u16::MAX);
+	let height: u16 = values[0].len().try_into().unwrap_or_else(|_| u16::MAX);
+
+	let mut image_buffer: Vec<u8> = vec!(); 
+	
+	let PI = std::f64::consts::PI;
+
+	let trig_consts = FourValues{
+		min_in: 0.0,
+		max_in: 255.0,
+		min_out: 0.0,
+		max_out:2.0 * PI,
+	};
+
+	for x in 0..width{
+		for y in 0..height{
+			let mut value: f64 =values[x as usize][y as usize].into();
+			value = value - gamma as f64;
+			
+			let colors = colormap(value, &map);
+
+			image_buffer.push(colors.r);
+			image_buffer.push(colors.g);
+			image_buffer.push(colors.b);
+	
+		}
+	}
+
+	println!("{:?}", image_buffer);
+	
+	let out_image = RgbImage::from_raw(width.into(), height.into(), image_buffer).unwrap();
+	out_image.save("./gaming.png").unwrap();	
+}
+pub fn parse(data: String) -> Vec<Vec<u8>>{
+	let lines = data.split("\n").collect::<Vec<&str>>();
+	
+	let last_line = lines[lines.len()-1].split(",").collect::<Vec<&str>>();
+	let width = last_line[0].parse::<usize>().unwrap();
+	
+	let mut height = last_line[1].to_string();
+	height.pop().unwrap();
+	let height = height.parse::<usize>().unwrap();
+	
+	let mut out: Vec<Vec<u8>> = vec!();
+
+	for i in 0..width{
+		out.push(vec!());
+		let values = lines[i].split(",").collect::<Vec<&str>>();
+		for j in 0..height{
+			out[i].push(values[j].parse::<u8>().unwrap_or_else(|_| 0 ));
+		}
+	}
+	
+
+	out
 }
