@@ -1,37 +1,26 @@
 extern crate mandelbrot;
 use eframe::egui;
 use egui_extras;
+use std::cmp::{min, max};
 
 fn main() {
-	let a = f64::powf(20.1, 0.5);
-	let r = 0.0019807040628566116* a;
+	let a = f64::powf(30.5, 0.5); //adjustment factor, means its the time that changes rather than spatial dimensions
+	let r = 0.000000000045 * a;
 	let params = &mandelbrot::Parameters{
-		zoom: 70681.93710780267* a,
+		zoom: 4300000000000.0 * a,
 		radius_x: r, 
 		radius_y: r,
-		low_x: -0.7333603088077273- r,
-		low_y: -0.15489114869489562- r,
-		quality: 2550,
-		bound: 5000.0,
+		low_x: 0.3602404434376143632361252444495453084826078079585857504883758147401953460592181003117529367227734263 - r,
+		low_y: -0.64131306106480317486037501517930206657949495228230525955617754306444857417275369025563702306896811 - r,
+		quality: 2000,
+		bound: 1000.0,
 	};
 	
 	let amp = mandelbrot::initcolormap();
-	for i in 0..255{
-		println!("{:?}, {}", amp[i], i);
-	}
 
-	let a = mandelbrot::FourValues{
-		min_in: 1.0,
-		max_in: 9.0,
-		min_out: 10.0,
-		max_out: 30.0,
-	};
-	for i in 1..10{
-		println!("{}", a.lerp(&(i as f64)))
-	}
+	mandelbrot::output_image(params, 350, "".to_string());
 
-	mandelbrot::output_image(params, 0, "".to_string());
-	mandelbrot::test_lerp();
+
 	let options = eframe::NativeOptions::default();
 	eframe::run_native(
 		"My egui App",
@@ -50,16 +39,16 @@ impl Default for App{
 	fn default() -> Self {
 		Self {
 			params: mandelbrot::Parameters{
-				zoom: 70.0,
-				low_x: -0.7321718863700132,
-				low_y: -0.15489114869489576,
-				radius_x: 2.0,
-				radius_y: 2.0,
-				quality: 255,
-				bound: 50.0,
+				zoom: 4300000000000.0,
+				low_x: 0.3602404434376143632361252444495453084826078079585857504883758147401953460592181003117529367227734263,
+				low_y: -0.64131306106480317486037501517930206657949495228230525955617754306444857417275369025563702306896811,
+				radius_x: 0.00000000002,
+				radius_y: 0.00000000002,
+				quality: 500,
+				bound: 500.0,
 	
 			},
-			gamma: 0,
+			gamma: 300,
 			map: mandelbrot::initcolormap(),
 		}
 	}
@@ -128,10 +117,10 @@ impl eframe::App for App {
 	
 			ui.horizontal(|ui| {
 				if ui.button("increase gamma").clicked() {
-					self.gamma += 2;
+					self.gamma += 20;
 				}
 				if ui.button("decrease gamma").clicked() {
-					self.gamma -= 2;
+					self.gamma -= 20;
 				}
 				ui.label(format!("{}", self.gamma));
 			});
@@ -150,7 +139,7 @@ impl eframe::App for App {
 			println!("{:?}\n {}", &self.params, self.gamma);
 			self.params.low_x -= self.params.radius_x;
 			self.params.low_y -= self.params.radius_y;
-			let display = egui_extras::image::RetainedImage::from_color_image("text", render_image(mandelbrot::multi_calculate(&self.params), self.gamma, &self.map));
+			let display = egui_extras::image::RetainedImage::from_color_image("text", render_int(mandelbrot::int_calculate(&self.params), self.gamma, &self.map));
 			self.params.low_x += self.params.radius_x;
 			self.params.low_y += self.params.radius_y;
 			display.show(ui);
@@ -159,6 +148,27 @@ impl eframe::App for App {
 
 
 
+}
+
+fn render_int(data: Vec<Vec<usize>>, gamma: isize, map: &Vec<mandelbrot::ReturnColor>) -> egui::ColorImage{
+	let width: u16 = data[0].len().try_into().unwrap();
+	let height: u16 = data.len().try_into().unwrap();
+	
+	let mut imagebuffer: Vec<u8> = vec!();
+
+	for x in 0..width{
+		for y in 0..height{
+			let mut value = data[x as usize][y as usize] as isize;
+			value = value - gamma;
+			value = max(0, min(255, value)); //this essentially does what mandelbrot::parse does
+			let colors = map[value as usize];
+			imagebuffer.push(colors.r);	
+			imagebuffer.push(colors.g);
+			imagebuffer.push(colors.b);
+			imagebuffer.push(255);
+		}
+	}
+	egui::ColorImage::from_rgba_unmultiplied([width as usize, height as usize], &imagebuffer)
 }
 
 fn render_image(data: String, gamma: isize, map: &Vec<mandelbrot::ReturnColor>) -> egui::ColorImage{
@@ -179,11 +189,11 @@ fn render_image(data: String, gamma: isize, map: &Vec<mandelbrot::ReturnColor>) 
 
 	for x in 0..width{
 		for y in 0..height{
-			let mut value: f64 = array[x as usize][y as usize].into();
-			value = value - gamma as f64;
+			let mut value = array[x as usize][y as usize] as isize;
+			value = value - gamma;
 			//let lerped = trig_consts.lerp(&value);		
 			
-			let colors = mandelbrot::colormap(value, &map);
+			let colors = map[value as usize];
 			//let colors = mandelbrot::filter(value, lerped);
 
 			image_buffer.push(colors.r);

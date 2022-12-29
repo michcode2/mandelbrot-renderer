@@ -6,11 +6,16 @@ use std::sync::mpsc;
 use threadpool::ThreadPool;
 use num::abs;
 use image::RgbImage;
+use std::net::TcpStream;
+use std::cmp::{min, max};
 //use Image::{Rgb, RgbImage};
 
 
 #[derive(Debug)]
 pub struct Parameters{
+	/*
+	* struct that takes stuff from the UI and gives it to the renderer. little bit janky
+	*/
     pub zoom: f64,
 
     pub low_x: f64,
@@ -20,17 +25,16 @@ pub struct Parameters{
     pub radius_x: f64,
     pub radius_y: f64,
 
-    pub quality: isize,
+    pub quality: usize,
 	pub bound: f64,
 }
 
-pub fn write_to_file(params: &Parameters) -> String{
-	let values = calculate(params);
-	values
-}
 
-/*
 fn talk_to_python() -> std::io::Result<()>{
+	/*
+	* never really got this working. ports are hard, but in theory sends stuff 
+	*/
+	
     let host = "127.0.0.1:";
     let pixel_port = "65432";
     let param_port = "65431";
@@ -42,19 +46,21 @@ fn talk_to_python() -> std::io::Result<()>{
     
     println!("i do be listening doe");
     
-    loop{
+/*    loop{
         
          let results = calculate(300.0, -0.5, 0.0, 1.0, 1.0, 510);
         println!("ok just sending the results over now");
         stream.write(&results.as_bytes())?;
         println!( "{:?}", get_params(&param_hostname));
         break;
-    }
+    }*/
     Ok(())
 }
-*/
 
 fn get_params(param_hostname: &str) {
+	/*
+	* goes with talk_to_python
+	*/
     let listener = TcpListener::bind(param_hostname).unwrap();
     println!("connected");
     let mut stream = match listener.accept() {
@@ -74,7 +80,9 @@ fn get_params(param_hostname: &str) {
 
 
 fn bounded(c: &Complex<f64>, iterations: isize, bound: f64) -> isize{
-
+	/*
+	* older varient of the other one. It checks if a point goes above bound in iterations tests
+	*/
     let mut z = Complex::new(0.0, 0.0);
 
     let mut i = 0;
@@ -92,8 +100,10 @@ fn bounded(c: &Complex<f64>, iterations: isize, bound: f64) -> isize{
     }
 }
 
-fn bounded_test(c: &Complex<f64>, iterations: isize, bound: f64) -> isize{
-
+fn bounded_test(c: &Complex<f64>, iterations: usize, bound: f64) -> usize{
+	/*
+	* checks if the gradient at a point goes above bound in iterations loops
+	*/
     let mut z = Complex::new(0.0, 0.0);
 
     let mut i = 0;
@@ -107,7 +117,7 @@ fn bounded_test(c: &Complex<f64>, iterations: isize, bound: f64) -> isize{
         }
 		// the path the code takes if it stays bounded
         if i >= iterations{
-            return -1;
+            return 0;
         }
         i+=1;
     }
@@ -117,6 +127,9 @@ fn bounded_test(c: &Complex<f64>, iterations: isize, bound: f64) -> isize{
 #[derive(Copy)]
 #[derive(Clone)]
 pub struct ReturnColor {
+	/*
+	* might be worth replacing this with something off the shelf
+	*/
 	pub r: u8,
 	pub g: u8,
 	pub b: u8,
@@ -124,6 +137,9 @@ pub struct ReturnColor {
 
 #[derive(Debug)]
 pub struct FourValues{
+	/*
+	* struct for lerping
+	*/
     pub min_in: f64,
     pub max_in: f64,
     pub min_out: f64,
@@ -132,6 +148,9 @@ pub struct FourValues{
 
 impl FourValues{
 	pub fn lerp(&self, value: &f64) -> f64 {
+		/*
+		* interpolates linearly using the values in &self
+		*/
 		let numerator = (self.min_out * (self.max_in - value)) + (self.max_out * (value - self.min_in));
 		let denominator = self.max_in - self.min_in;
 		numerator/denominator
@@ -153,7 +172,7 @@ pub fn filter(value: f64, lerped: f64) -> ReturnColor {
 pub fn filter2(value: f64, lerped: f64) -> ReturnColor {
 	let r: u8 = ((lerped/4.0).sin()*255.0) as u8;
 	let b: u8 = (value) as u8;
-	let g: u8 = f64::ln((45.0*value)) as u8;
+	let g: u8 = f64::ln(45.0*value) as u8;
 
 	ReturnColor{
 		r,
@@ -163,118 +182,90 @@ pub fn filter2(value: f64, lerped: f64) -> ReturnColor {
 }
 
 pub fn initcolormap() -> Vec<ReturnColor> {
-	let rs: Vec<u8> = vec![];
-	let gs: Vec<u8> = vec![];
-	let bs: Vec<u8> = vec![];
-
+	/*
+	* makes a colormap with a bunch of lerping. Try to avoid running too much.
+	*/
 	let mut finals: Vec<ReturnColor> = vec![];	
 	
-	let stop1 = 255.0/3.0;
-	let stop2 = 2.0*255.0/3.0;
+	let stops = vec![0.0, 85.0, 170.0, 256.0];
 
-	let block1 = [FourValues{
-		min_in: 0.0,
-		max_in: stop1,
-		min_out: 0.0,
-		max_out: 91.0,
-	},
-	FourValues{
-		min_in: 0.0,
-		max_in: stop1,
-		min_out: 0.0,
-		max_out: 206.0,
-			
-	},
-	FourValues{
-		min_in: 0.0,
-		max_in: stop1,
-		min_out: 0.0,
-		max_out: 250.0,
-	}	
-	];
+	let black = ReturnColor{
+		r: 0,
+		g: 0,
+		b: 0,
+	};
 	
-	let block2 = [FourValues{
-		min_in: stop1,
-		max_in: stop2,
-		min_out: 91.0,
-		max_out: 245.0,
-	},
-	FourValues{
-		min_in: stop1,
-		max_in: stop2,
-		min_out: 206.0,
-		max_out: 169.0,
-			
-	},
-	FourValues{
-		min_in: stop1,
-		max_in: stop2,
-		min_out: 250.0,
-		max_out: 184.0,
-	}	
-	];
-	
-	let block3 = [FourValues{
-		min_in: stop2,
-		max_in: 255.0,
-		min_out: 245.0,
-		max_out: 255.0,
-	},
-	FourValues{
-		min_in: stop2,
-		max_in: 255.0,
-		min_out: 169.0,
-		max_out: 255.0,
-			
-	},
-	FourValues{
-		min_in: stop2,
-		max_in: 255.0,
-		min_out: 184.0,
-		max_out: 255.0,
-	}	
-	];
+	let blue = ReturnColor{
+		r: 91,
+		g: 206,
+		b: 250,
+	};
 
-	for i in 0..256 {
-		let i = i as f64;
-		if 0.0 <= i && i < stop1{
-			finals.push(ReturnColor{
-				r: block1[0].lerp(&i) as u8,
-				g: block1[1].lerp(&i) as u8,
-				b: block1[2].lerp(&i) as u8,
-			});
-		}
-		if stop1<= i && i < stop2{
-			finals.push(ReturnColor{
-				r: block2[0].lerp(&i) as u8,
-				g: block2[1].lerp(&i) as u8,
-				b: block2[2].lerp(&i) as u8,
-			});
+	let pink = ReturnColor{
+		r: 245,
+		g: 169,
+		b: 184,
+	};
+
+	let white = ReturnColor{
+		r: 255,
+		g: 255,
+		b: 255,
+	};
+	
+	let colors = vec![black, blue, pink, white];
+	
+	let mut finals: Vec<ReturnColor> = vec![];
+
+	for i in 0..colors.len()-1{
+		let r_lerp = FourValues{
+			min_in: stops[i] as f64,
+			max_in: stops[i+1] as f64,	
+			min_out: colors[i].r as f64, 
+			max_out: colors[i+1].r as f64, 
+		};
+
+		let g_lerp = FourValues{
+			min_out: colors[i].g as f64, 
+			max_out: colors[i+1].g as f64, 
+			..r_lerp
+		};
+
+		let b_lerp = FourValues{
+			min_out: colors[i].b as f64, 
+			max_out: colors[i+1].b as f64, 
+			..r_lerp
+		};
 		
-		}
-		if i >= stop2{
-			println!("i: {}", i);
+		for j in stops[i] as usize..stops[i+1] as usize{
+			println!("{j}");
+			let j = j as f64;
 			finals.push(ReturnColor{
-				r: block3[0].lerp(&i) as u8,
-				g: block3[1].lerp(&i) as u8,
-				b: block3[2].lerp(&i) as u8,
-			});
-	
+				r: r_lerp.lerp(&j) as u8,
+				g: g_lerp.lerp(&j) as u8,
+				b: b_lerp.lerp(&j) as u8,
+				});
 		}
 
 	}
-	return finals;
+	finals
 }
-
-pub fn colormap(value: f64, map: &Vec<ReturnColor>) -> ReturnColor {
+/*
+pub fn colormap<T>(value: <T>, map: &Vec<ReturnColor>) -> ReturnColor {
+	/* 
+	* might not even need this tbh
+	*/
 	map[value as usize]
 }
-
+*/
 pub fn test_lerp(){
+	/*
+	* makes sure the lerping looks good. could rename it to save_colormap
+	*/
 	let map = initcolormap();
 	let mut values: Vec<u8> = vec![];
 	for i in 0..256{
-		let colors = colormap(i as f64, &map);
+		let colors = map[i as usize];
 		
 		values.push(colors.r);
 		values.push(colors.g);
@@ -286,6 +277,9 @@ pub fn test_lerp(){
 }
 
 fn calculate(parameters: &Parameters) -> String {
+	/*
+	* single thread calculation of the julia sets
+	*/
     let low_x = parameters.low_x;
     let high_x = low_x + 2.0 * parameters.radius_x;
 
@@ -295,25 +289,10 @@ fn calculate(parameters: &Parameters) -> String {
     let width = ((high_x - low_x) * parameters.zoom) as usize;
     let height = ((high_y - low_y) * parameters.zoom) as usize;
 
-    if width > 2000 {panic!("width really big");}
-    if height > 2000 {panic!("height really big");}
 
     let reals = linspace::<f64>(low_x,high_x,width);
     let mut results = String::new();
     
-/*
-ideas for multithreading this
-have an array for each point that a called function will insert a value into
-after all of the handles are joined, have the main thread output a string like it currently does
-
-use structs and have each thread return a struct of the value, real, imaginary
-somehow order the structs
-make the string
-
-BEST IDEA: READ THE FUCKING RUST DOCS messages seem useful :)
-
-*/
-
     for y in reals{
         let cs = linspace::<f64>(low_y,high_y,height);
         for x in cs{
@@ -334,14 +313,17 @@ BEST IDEA: READ THE FUCKING RUST DOCS messages seem useful :)
 struct ValueAtPoint{
 	real: f64,
 	imag: f64,
-	value: isize,
+	value: String,
 }
 
 pub fn multi_calculate(parameters: &Parameters) -> String {
+	/*
+	* multithreaded calculater for the julia sets
+	*/
 	let height = (2.0 * parameters.radius_x * parameters.zoom) as usize;
 	let width = (2.0 * parameters.radius_y * parameters.zoom) as usize;
 	
-	let mut storage = vec![vec![0; height + 1]; width + 1];
+	let mut storage = vec![vec!["".to_string(); height + 1]; width + 1];
 	
 	let high_x = parameters.low_x + parameters.radius_x * 2.0;
 	let high_y = parameters.low_y + parameters.radius_y * 2.0;
@@ -361,7 +343,7 @@ pub fn multi_calculate(parameters: &Parameters) -> String {
 				let output = ValueAtPoint{
 					real: x,
 					imag: y, 
-					value: bounded_test(&c, quality, bound),
+					value: bounded_test(&c, quality, bound).to_string(),
 				};
 				tx.send(output).expect("messages didnt send");
 			});
@@ -370,23 +352,23 @@ pub fn multi_calculate(parameters: &Parameters) -> String {
 	pool.join();
 	drop(tx);
 
-	let real_step = (2.0 * parameters.radius_x)/height as f64;
-	let imag_step = (2.0 * parameters.radius_y)/width as f64;
-	for thing in rx{
-		let index_x = ((thing.real - parameters.low_x) / real_step) as usize;
-		let index_y = ((thing.imag - parameters.low_y) / imag_step) as usize;
+	let real_step = (2.0 * parameters.radius_x)/width as f64;
+	let imag_step = (2.0 * parameters.radius_y)/height as f64;
+	for message in rx{
+		let index_x = ((message.real - parameters.low_x) / real_step) as usize;
+		let index_y = ((message.imag - parameters.low_y) / imag_step) as usize;
 		
-		storage[index_x][index_y] = thing.value;
+		storage[index_x][index_y] = message.value;
 	}
 	
 	let mut out = String::from("");
 	
 	for x in 0..width as usize{
 		for y in 0..height as usize{
-			out = out + &storage[y][x].to_string();
-			out = out + ",";
+			out.push_str(&storage[y][x]);
+			out.push(',');
 		}
-		out += "\n";
+		out.push('\n');
 	}
 	out = out + &width.to_string();
     out = out + ",";
@@ -396,31 +378,74 @@ pub fn multi_calculate(parameters: &Parameters) -> String {
 	
 }
 
-pub fn output_image(params: &Parameters, gamma: isize, path: String) {
-	let map = initcolormap();
-	let string_values = multi_calculate(params);
-	let values = parse(string_values);
+struct IntAtPoint{
+	imag: f64,
+	real: f64,
+	value: usize,
+}
 
-	let width: u16 = values.len().try_into().unwrap_or_else(|_| u16::MAX);
-	let height: u16 = values[0].len().try_into().unwrap_or_else(|_| u16::MAX);
+pub fn int_calculate(params: &Parameters) -> Vec<Vec<usize>> {
+	let width = (params.radius_x * 2.0 * params.zoom) as usize;
+	let height = (params.radius_y * 2.0 * params.zoom) as usize;
+	
+	let high_x = params.low_x + (2.0 * params.radius_x);
+	let high_y = params.low_y + (2.0 * params.radius_y);
+	
+	let pool = ThreadPool::new(4);
+	let (tx, rx) = mpsc::channel();
+
+	for x in linspace::<f64>(params.low_x, high_x, width){
+		for y in linspace::<f64>(params.low_y, high_y, height){
+			let c = Complex::new(x, y);
+			let tx = tx.clone();
+			let q = params.quality;
+			let b = params.bound;
+			pool.execute( move || {
+				tx.send(IntAtPoint{
+							real: x,
+							imag: y,
+							value: bounded_test(&c, q, b),
+						}).expect("error calculating");
+				});
+		}
+	}	
+	
+	pool.join();
+	drop(tx);
+	let mut storage: Vec<Vec<usize>> = vec![vec![255; width + 1]; height + 1];
+	let real_step = (2.0 * params.radius_x)/width as f64;
+	let imag_step = (2.0 * params.radius_y)/height as f64;
+
+	for message in rx{
+		let index = ((message.real-params.low_x)/real_step) as usize;
+		let indey = ((message.imag-params.low_y)/imag_step) as usize;
+		
+		storage[indey][index] = message.value;
+	}
+	storage
+}
+
+pub fn output_image(params: &Parameters, gamma: isize, path: String) {
+	/*
+	* renders a high quality image. can take a WHILE
+	*/
+	let map = initcolormap();
+	println!("gonna calculate");
+	let values = int_calculate(params);
+	println!("calculated");
+	let width = values.len();
+	let height = values[0].len();
 
 	let mut image_buffer: Vec<u8> = vec!(); 
 	
 	let PI = std::f64::consts::PI;
-
-	let trig_consts = FourValues{
-		min_in: 0.0,
-		max_in: 255.0,
-		min_out: 0.0,
-		max_out:2.0 * PI,
-	};
-
+	println!("putting it in buffer");
 	for x in 0..width{
 		for y in 0..height{
-			let mut value: f64 =values[x as usize][y as usize].into();
-			value = value - gamma as f64;
-			
-			let colors = colormap(value, &map);
+			let mut value =values[x as usize][y as usize] as isize;
+			value = value - gamma;
+			value = max(0, min(value, 255));
+			let colors = map[value as usize];
 
 			image_buffer.push(colors.r);
 			image_buffer.push(colors.g);
@@ -431,10 +456,14 @@ pub fn output_image(params: &Parameters, gamma: isize, path: String) {
 
 	println!("{:?}", image_buffer);
 	
-	let out_image = RgbImage::from_raw(width.into(), height.into(), image_buffer).unwrap();
+	let out_image = RgbImage::from_raw(width.try_into().unwrap(), height.try_into().unwrap(), image_buffer).unwrap();
 	out_image.save("./gaming.png").unwrap();	
 }
+
 pub fn parse(data: String) -> Vec<Vec<u8>>{
+	/*
+	* literally cannot remember
+	*/
 	let lines = data.split("\n").collect::<Vec<&str>>();
 	
 	let last_line = lines[lines.len()-1].split(",").collect::<Vec<&str>>();
