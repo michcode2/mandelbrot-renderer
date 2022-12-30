@@ -1,25 +1,24 @@
 extern crate mandelbrot;
 use eframe::egui;
-use egui_extras;
 use std::cmp::{min, max};
 
 fn main() {
-	let a = f64::powf(30.5, 0.5); //adjustment factor, means its the time that changes rather than spatial dimensions
-	let r = 0.000000000045 * a;
-	let params = &mandelbrot::Parameters{
-		zoom: 4300000000000.0 * a,
-		radius_x: r, 
-		radius_y: r,
-		low_x: 0.3602404434376143632361252444495453084826078079585857504883758147401953460592181003117529367227734263 - r,
-		low_y: -0.64131306106480317486037501517930206657949495228230525955617754306444857417275369025563702306896811 - r,
-		quality: 2000,
-		bound: 1000.0,
-	};
-	
-	let amp = mandelbrot::initcolormap();
+	if cfg!(render){
+		let a = f64::powf(1.1, 0.5); //adjustment factor, means its the time that changes rather than spatial dimensions
+		let r = 0.0008112963841460683 * a;
+		let params = &mandelbrot::Parameters{
+			zoom: 70681.93710780267 * a,
+			radius_x: r, 
+			radius_y: r,
+			low_x:  0.3227715843073171 - r,
+			low_y: 0.03673122887058994 - r,
+			quality: 20000,
+			bound: 10000.0,
+		};
+		
 
-	mandelbrot::output_image(params, 350, "".to_string());
-
+		mandelbrot::output_image(params, 20, "temp.png".to_string());
+	}
 
 	let options = eframe::NativeOptions::default();
 	eframe::run_native(
@@ -39,16 +38,16 @@ impl Default for App{
 	fn default() -> Self {
 		Self {
 			params: mandelbrot::Parameters{
-				zoom: 4300000000000.0,
-				low_x: 0.3602404434376143632361252444495453084826078079585857504883758147401953460592181003117529367227734263,
-				low_y: -0.64131306106480317486037501517930206657949495228230525955617754306444857417275369025563702306896811,
-				radius_x: 0.00000000002,
-				radius_y: 0.00000000002,
-				quality: 500,
+				zoom: 70.0,
+				low_x: 0.0,
+				low_y: 0.0,
+				radius_x:2.0,
+				radius_y: 2.0,
+				quality: 50,
 				bound: 500.0,
 	
 			},
-			gamma: 300,
+			gamma: 0,
 			map: mandelbrot::initcolormap(),
 		}
 	}
@@ -150,7 +149,7 @@ impl eframe::App for App {
 
 }
 
-fn render_int(data: Vec<Vec<usize>>, gamma: isize, map: &Vec<mandelbrot::ReturnColor>) -> egui::ColorImage{
+fn render_int(data: Vec<Vec<usize>>, gamma: isize, map: &[mandelbrot::ReturnColor]) -> egui::ColorImage{
 	let width: u16 = data[0].len().try_into().unwrap();
 	let height: u16 = data.len().try_into().unwrap();
 	
@@ -159,7 +158,7 @@ fn render_int(data: Vec<Vec<usize>>, gamma: isize, map: &Vec<mandelbrot::ReturnC
 	for x in 0..width{
 		for y in 0..height{
 			let mut value = data[x as usize][y as usize] as isize;
-			value = value - gamma;
+			value -= gamma;
 			value = max(0, min(255, value)); //this essentially does what mandelbrot::parse does
 			let colors = map[value as usize];
 			imagebuffer.push(colors.r);	
@@ -171,6 +170,7 @@ fn render_int(data: Vec<Vec<usize>>, gamma: isize, map: &Vec<mandelbrot::ReturnC
 	egui::ColorImage::from_rgba_unmultiplied([width as usize, height as usize], &imagebuffer)
 }
 
+#[cfg(all)]
 fn render_image(data: String, gamma: isize, map: &Vec<mandelbrot::ReturnColor>) -> egui::ColorImage{
 	let array = mandelbrot::parse(data);
 	let width: u16 = array.len().try_into().unwrap_or_else(|_| u16::MAX);

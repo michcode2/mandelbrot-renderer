@@ -1,15 +1,16 @@
 use num::complex::Complex;
 use itertools_num::linspace;
-use std::io::prelude::*;
-use std::net::TcpListener;
 use std::sync::mpsc;
 use threadpool::ThreadPool;
-use num::abs;
 use image::RgbImage;
-use std::net::TcpStream;
 use std::cmp::{min, max};
-//use Image::{Rgb, RgbImage};
+use num::abs;
 
+#[cfg(all)]
+use {
+	std::net::{TcpStream, TcpListener},
+	std::io::prelude::*,
+};
 
 #[derive(Debug)]
 pub struct Parameters{
@@ -29,7 +30,7 @@ pub struct Parameters{
 	pub bound: f64,
 }
 
-
+#[cfg(all)]
 fn talk_to_python() -> std::io::Result<()>{
 	/*
 	* never really got this working. ports are hard, but in theory sends stuff 
@@ -57,6 +58,7 @@ fn talk_to_python() -> std::io::Result<()>{
     Ok(())
 }
 
+#[cfg(all)]
 fn get_params(param_hostname: &str) {
 	/*
 	* goes with talk_to_python
@@ -78,7 +80,7 @@ fn get_params(param_hostname: &str) {
     println!("{:?}", buf);
 }
 
-
+#[cfg(all)]
 fn bounded(c: &Complex<f64>, iterations: isize, bound: f64) -> isize{
 	/*
 	* older varient of the other one. It checks if a point goes above bound in iterations tests
@@ -110,7 +112,7 @@ fn bounded_test(c: &Complex<f64>, iterations: usize, bound: f64) -> usize{
 	let mut last_z;
     loop{
 		last_z = z;
-        z = (z * z) + c;
+        z = z.powf(2.0) + c;
 		// the path the code takes if it diverges to infinity
         if abs(last_z.norm() - z.norm()) > bound {
             return i;
@@ -157,6 +159,7 @@ impl FourValues{
 	}
 }
 
+#[cfg(all)]
 pub fn filter(value: f64, lerped: f64) -> ReturnColor {
 	let r: u8 = ((lerped/4.0).sin()*255.0) as u8;
 	let b: u8 = (value) as u8;
@@ -169,6 +172,7 @@ pub fn filter(value: f64, lerped: f64) -> ReturnColor {
 	}
 }
 
+#[cfg(all)]
 pub fn filter2(value: f64, lerped: f64) -> ReturnColor {
 	let r: u8 = ((lerped/4.0).sin()*255.0) as u8;
 	let b: u8 = (value) as u8;
@@ -185,8 +189,6 @@ pub fn initcolormap() -> Vec<ReturnColor> {
 	/*
 	* makes a colormap with a bunch of lerping. Try to avoid running too much.
 	*/
-	let mut finals: Vec<ReturnColor> = vec![];	
-	
 	let stops = vec![0.0, 85.0, 170.0, 256.0];
 
 	let black = ReturnColor{
@@ -258,6 +260,8 @@ pub fn colormap<T>(value: <T>, map: &Vec<ReturnColor>) -> ReturnColor {
 	map[value as usize]
 }
 */
+
+#[cfg(all)]
 pub fn test_lerp(){
 	/*
 	* makes sure the lerping looks good. could rename it to save_colormap
@@ -276,6 +280,7 @@ pub fn test_lerp(){
 	out_image.save("./cmap.png").unwrap();	
 }
 
+#[cfg(all)]
 fn calculate(parameters: &Parameters) -> String {
 	/*
 	* single thread calculation of the julia sets
@@ -309,13 +314,14 @@ fn calculate(parameters: &Parameters) -> String {
     results = results + "d";
     results
 }
-
+#[cfg(all)]
 struct ValueAtPoint{
 	real: f64,
 	imag: f64,
 	value: String,
 }
 
+#[cfg(all)]
 pub fn multi_calculate(parameters: &Parameters) -> String {
 	/*
 	* multithreaded calculater for the julia sets
@@ -391,16 +397,16 @@ pub fn int_calculate(params: &Parameters) -> Vec<Vec<usize>> {
 	let high_x = params.low_x + (2.0 * params.radius_x);
 	let high_y = params.low_y + (2.0 * params.radius_y);
 	
-	let pool = ThreadPool::new(4);
+	let pool = ThreadPool::new(3);
 	let (tx, rx) = mpsc::channel();
 
 	for x in linspace::<f64>(params.low_x, high_x, width){
 		for y in linspace::<f64>(params.low_y, high_y, height){
-			let c = Complex::new(x, y);
 			let tx = tx.clone();
 			let q = params.quality;
 			let b = params.bound;
 			pool.execute( move || {
+				let c = Complex::new(x, y);
 				tx.send(IntAtPoint{
 							real: x,
 							imag: y,
@@ -438,12 +444,11 @@ pub fn output_image(params: &Parameters, gamma: isize, path: String) {
 
 	let mut image_buffer: Vec<u8> = vec!(); 
 	
-	let PI = std::f64::consts::PI;
 	println!("putting it in buffer");
 	for x in 0..width{
 		for y in 0..height{
-			let mut value =values[x as usize][y as usize] as isize;
-			value = value - gamma;
+			let mut value = values[x as usize][y as usize] as isize;
+			value -= gamma;
 			value = max(0, min(value, 255));
 			let colors = map[value as usize];
 
@@ -457,9 +462,10 @@ pub fn output_image(params: &Parameters, gamma: isize, path: String) {
 	println!("{:?}", image_buffer);
 	
 	let out_image = RgbImage::from_raw(width.try_into().unwrap(), height.try_into().unwrap(), image_buffer).unwrap();
-	out_image.save("./gaming.png").unwrap();	
+	out_image.save(path).unwrap();	
 }
 
+#[cfg(all)]
 pub fn parse(data: String) -> Vec<Vec<u8>>{
 	/*
 	* literally cannot remember
