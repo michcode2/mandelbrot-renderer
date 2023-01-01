@@ -1,6 +1,7 @@
 extern crate mandelbrot;
 use eframe::egui;
 use std::cmp::{min, max};
+use std::time::{Duration, Instant};
 
 fn main() {
 	if cfg!(render){
@@ -19,7 +20,9 @@ fn main() {
 
 		mandelbrot::output_image(params, 20, "temp.png".to_string());
 	}
-
+	
+	mandelbrot::heater();
+	
 	let options = eframe::NativeOptions::default();
 	eframe::run_native(
 		"My egui App",
@@ -38,13 +41,13 @@ impl Default for App{
 	fn default() -> Self {
 		Self {
 			params: mandelbrot::Parameters{
-				zoom: 70.0,
-				low_x: 0.0,
-				low_y: 0.0,
-				radius_x:2.0,
-				radius_y: 2.0,
-				quality: 50,
-				bound: 500.0,
+				zoom: 11858.461261560205,
+				low_x:  0.33992532398246744,
+				low_y: -0.5625025651553807,
+				radius_x: 0.0088544371553806,
+				radius_y: 0.0088544371553806,
+				quality: 2000,
+				bound: 750.0,
 	
 			},
 			gamma: 0,
@@ -55,6 +58,7 @@ impl Default for App{
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+			let time = Instant::now();
         egui::CentralPanel::default().show(ctx, |ui| {
 			ui.label(format!("zoom: {}", self.params.zoom));
 			ui.horizontal(|ui| {
@@ -135,13 +139,14 @@ impl eframe::App for App {
 			});
 			
 	
-			println!("{:?}\n {}", &self.params, self.gamma);
 			self.params.low_x -= self.params.radius_x;
 			self.params.low_y -= self.params.radius_y;
 			let display = egui_extras::image::RetainedImage::from_color_image("text", render_int(mandelbrot::int_calculate(&self.params), self.gamma, &self.map));
 			self.params.low_x += self.params.radius_x;
 			self.params.low_y += self.params.radius_y;
 			display.show(ui);
+			println!("total time elapsed: {:?}", time.elapsed());
+			println!("{:?}, {}", self.params, self.gamma);
     	});    
 	}
 
@@ -170,7 +175,7 @@ fn render_int(data: Vec<Vec<usize>>, gamma: isize, map: &[mandelbrot::ReturnColo
 	egui::ColorImage::from_rgba_unmultiplied([width as usize, height as usize], &imagebuffer)
 }
 
-#[cfg(all)]
+#[cfg(feature = "all")]
 fn render_image(data: String, gamma: isize, map: &Vec<mandelbrot::ReturnColor>) -> egui::ColorImage{
 	let array = mandelbrot::parse(data);
 	let width: u16 = array.len().try_into().unwrap_or_else(|_| u16::MAX);

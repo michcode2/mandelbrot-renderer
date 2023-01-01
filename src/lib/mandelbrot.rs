@@ -5,8 +5,9 @@ use threadpool::ThreadPool;
 use image::RgbImage;
 use std::cmp::{min, max};
 use num::abs;
+use std::time::{Duration, Instant};
 
-#[cfg(all)]
+#[cfg(feature = "all")]
 use {
 	std::net::{TcpStream, TcpListener},
 	std::io::prelude::*,
@@ -30,10 +31,10 @@ pub struct Parameters{
 	pub bound: f64,
 }
 
-#[cfg(all)]
+#[cfg(feature = "all")]
 fn talk_to_python() -> std::io::Result<()>{
 	/*
-	* never really got this working. ports are hard, but in theory sends stuff 
+	* never refeature = "all"y got this working. ports are hard, but in theory sends stuff 
 	*/
 	
     let host = "127.0.0.1:";
@@ -58,7 +59,7 @@ fn talk_to_python() -> std::io::Result<()>{
     Ok(())
 }
 
-#[cfg(all)]
+#[cfg(feature = "all")]
 fn get_params(param_hostname: &str) {
 	/*
 	* goes with talk_to_python
@@ -80,7 +81,7 @@ fn get_params(param_hostname: &str) {
     println!("{:?}", buf);
 }
 
-#[cfg(all)]
+#[cfg(feature = "all")]
 fn bounded(c: &Complex<f64>, iterations: isize, bound: f64) -> isize{
 	/*
 	* older varient of the other one. It checks if a point goes above bound in iterations tests
@@ -159,7 +160,7 @@ impl FourValues{
 	}
 }
 
-#[cfg(all)]
+#[cfg(feature = "all")]
 pub fn filter(value: f64, lerped: f64) -> ReturnColor {
 	let r: u8 = ((lerped/4.0).sin()*255.0) as u8;
 	let b: u8 = (value) as u8;
@@ -172,7 +173,7 @@ pub fn filter(value: f64, lerped: f64) -> ReturnColor {
 	}
 }
 
-#[cfg(all)]
+#[cfg(feature = "all")]
 pub fn filter2(value: f64, lerped: f64) -> ReturnColor {
 	let r: u8 = ((lerped/4.0).sin()*255.0) as u8;
 	let b: u8 = (value) as u8;
@@ -189,7 +190,7 @@ pub fn initcolormap() -> Vec<ReturnColor> {
 	/*
 	* makes a colormap with a bunch of lerping. Try to avoid running too much.
 	*/
-	let stops = vec![0.0, 85.0, 170.0, 256.0];
+	let stops = vec![0.0, 85.0, 120.0, 256.0];
 
 	let black = ReturnColor{
 		r: 0,
@@ -261,7 +262,7 @@ pub fn colormap<T>(value: <T>, map: &Vec<ReturnColor>) -> ReturnColor {
 }
 */
 
-#[cfg(all)]
+#[cfg(feature = "all")]
 pub fn test_lerp(){
 	/*
 	* makes sure the lerping looks good. could rename it to save_colormap
@@ -280,7 +281,7 @@ pub fn test_lerp(){
 	out_image.save("./cmap.png").unwrap();	
 }
 
-#[cfg(all)]
+#[cfg(feature = "all")]
 fn calculate(parameters: &Parameters) -> String {
 	/*
 	* single thread calculation of the julia sets
@@ -314,14 +315,14 @@ fn calculate(parameters: &Parameters) -> String {
     results = results + "d";
     results
 }
-#[cfg(all)]
+#[cfg(feature = "all")]
 struct ValueAtPoint{
 	real: f64,
 	imag: f64,
 	value: String,
 }
 
-#[cfg(all)]
+#[cfg(feature = "all")]
 pub fn multi_calculate(parameters: &Parameters) -> String {
 	/*
 	* multithreaded calculater for the julia sets
@@ -397,7 +398,7 @@ pub fn int_calculate(params: &Parameters) -> Vec<Vec<usize>> {
 	let high_x = params.low_x + (2.0 * params.radius_x);
 	let high_y = params.low_y + (2.0 * params.radius_y);
 	
-	let pool = ThreadPool::new(3);
+	let pool = ThreadPool::new(4);
 	let (tx, rx) = mpsc::channel();
 
 	for x in linspace::<f64>(params.low_x, high_x, width){
@@ -418,7 +419,8 @@ pub fn int_calculate(params: &Parameters) -> Vec<Vec<usize>> {
 	
 	pool.join();
 	drop(tx);
-	let mut storage: Vec<Vec<usize>> = vec![vec![255; width + 1]; height + 1];
+
+	let mut storage: Vec<Vec<usize>> = vec![vec![0; width + 1]; height + 1];
 	let real_step = (2.0 * params.radius_x)/width as f64;
 	let imag_step = (2.0 * params.radius_y)/height as f64;
 
@@ -465,7 +467,7 @@ pub fn output_image(params: &Parameters, gamma: isize, path: String) {
 	out_image.save(path).unwrap();	
 }
 
-#[cfg(all)]
+#[cfg(feature = "all")]
 pub fn parse(data: String) -> Vec<Vec<u8>>{
 	/*
 	* literally cannot remember
@@ -492,3 +494,21 @@ pub fn parse(data: String) -> Vec<Vec<u8>>{
 
 	out
 }
+
+pub fn heater() {
+	let mut loops = 0;
+	let params = Parameters{
+		zoom: 11858.461261560205,
+		low_x:  0.33992532398246744,
+		low_y: -0.5625025651553807,
+		radius_x: 1.,
+		radius_y: 1.,
+		quality: 2000,
+		bound: 750.0,
+	};
+	loop{
+		int_calculate(&params);
+		loops += 1;
+		println!("loop: {loops}");
+	}
+}	
