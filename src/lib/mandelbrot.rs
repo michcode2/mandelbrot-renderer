@@ -5,7 +5,7 @@ use threadpool::ThreadPool;
 use image::RgbImage;
 use std::cmp::{min, max};
 use num::abs;
-use std::time::{Duration, Instant};
+
 
 #[cfg(feature = "all")]
 use {
@@ -29,6 +29,14 @@ pub struct Parameters{
 
     pub quality: usize,
 	pub bound: f64,
+}
+
+impl Parameters {
+	pub fn scale(&mut self, factor: f64) {
+		self.zoom *= factor;
+		self.radius_x *= 1.0/factor;
+		self.radius_y *= 1.0/factor;
+	}
 }
 
 #[cfg(feature = "all")]
@@ -79,28 +87,6 @@ fn get_params(param_hostname: &str) {
     let mut buf = [0; 32];
     stream.read(&mut buf).expect("error reading the stream");
     println!("{:?}", buf);
-}
-
-#[cfg(feature = "all")]
-fn bounded(c: &Complex<f64>, iterations: isize, bound: f64) -> isize{
-	/*
-	* older varient of the other one. It checks if a point goes above bound in iterations tests
-	*/
-    let mut z = Complex::new(0.0, 0.0);
-
-    let mut i = 0;
-    loop{
-        z = (z * z) + c;
-		// the path the code takes if it diverges to infinity
-        if z.norm() > bound {
-            return i;
-        }
-		// the path the code takes if it stays bounded
-        if i >= iterations{
-            return -1;
-        }
-        i+=1;
-    }
 }
 
 fn bounded_test(c: &Complex<f64>, iterations: usize, bound: f64) -> usize{
@@ -190,7 +176,7 @@ pub fn initcolormap() -> Vec<ReturnColor> {
 	/*
 	* makes a colormap with a bunch of lerping. Try to avoid running too much.
 	*/
-	let stops = vec![0.0, 85.0, 120.0, 256.0];
+	let stops = vec![0.0, 255.0/3.0, 255.0/1.5, 256.0];
 
 	let black = ReturnColor{
 		r: 0,
@@ -198,25 +184,24 @@ pub fn initcolormap() -> Vec<ReturnColor> {
 		b: 0,
 	};
 	
-	let blue = ReturnColor{
-		r: 91,
-		g: 206,
-		b: 250,
+	let purple = ReturnColor{
+		r: 200,
+		g: 50,
+		b: 255,
 	};
-
+	
 	let pink = ReturnColor{
-		r: 245,
-		g: 169,
-		b: 184,
+		r: 200,
+		g: 150,
+		b: 255,
 	};
-
 	let white = ReturnColor{
 		r: 255,
 		g: 255,
 		b: 255,
 	};
 	
-	let colors = vec![black, blue, pink, white];
+	let colors = vec![black, purple, pink, white];
 	
 	let mut finals: Vec<ReturnColor> = vec![];
 
@@ -241,7 +226,6 @@ pub fn initcolormap() -> Vec<ReturnColor> {
 		};
 		
 		for j in stops[i] as usize..stops[i+1] as usize{
-			println!("{j}");
 			let j = j as f64;
 			finals.push(ReturnColor{
 				r: r_lerp.lerp(&j) as u8,
@@ -322,69 +306,6 @@ struct ValueAtPoint{
 	value: String,
 }
 
-#[cfg(feature = "all")]
-pub fn multi_calculate(parameters: &Parameters) -> String {
-	/*
-	* multithreaded calculater for the julia sets
-	*/
-	let height = (2.0 * parameters.radius_x * parameters.zoom) as usize;
-	let width = (2.0 * parameters.radius_y * parameters.zoom) as usize;
-	
-	let mut storage = vec![vec!["".to_string(); height + 1]; width + 1];
-	
-	let high_x = parameters.low_x + parameters.radius_x * 2.0;
-	let high_y = parameters.low_y + parameters.radius_y * 2.0;
-
-	let pool = ThreadPool::new(4);
-	let (tx, rx) = mpsc::channel();
-	
-    let reals = linspace::<f64>(parameters.low_x,high_x,width);
-	for x in reals{
-        let complexes = linspace::<f64>(parameters.low_y,high_y,height);
-		for y in complexes{
-			let tx = tx.clone();
-			let quality = parameters.quality;
-			let bound = parameters.bound;
-			pool.execute(move || {
-				let c = Complex::new(x, y);
-				let output = ValueAtPoint{
-					real: x,
-					imag: y, 
-					value: bounded_test(&c, quality, bound).to_string(),
-				};
-				tx.send(output).expect("messages didnt send");
-			});
-		}
-	}
-	pool.join();
-	drop(tx);
-
-	let real_step = (2.0 * parameters.radius_x)/width as f64;
-	let imag_step = (2.0 * parameters.radius_y)/height as f64;
-	for message in rx{
-		let index_x = ((message.real - parameters.low_x) / real_step) as usize;
-		let index_y = ((message.imag - parameters.low_y) / imag_step) as usize;
-		
-		storage[index_x][index_y] = message.value;
-	}
-	
-	let mut out = String::from("");
-	
-	for x in 0..width as usize{
-		for y in 0..height as usize{
-			out.push_str(&storage[y][x]);
-			out.push(',');
-		}
-		out.push('\n');
-	}
-	out = out + &width.to_string();
-    out = out + ",";
-    out = out+ &height.to_string();
-	out = out + "d";
-	out
-	
-}
-
 struct IntAtPoint{
 	imag: f64,
 	real: f64,
@@ -392,8 +313,8 @@ struct IntAtPoint{
 }
 
 pub fn int_calculate(params: &Parameters) -> Vec<Vec<usize>> {
-	let width = (params.radius_x * 2.0 * params.zoom) as usize;
-	let height = (params.radius_y * 2.0 * params.zoom) as usize;
+	let width = params.radius_x * 2.0 * params.zoom;
+	let height = params.radius_y * 2.0 * params.zoom;
 	
 	let high_x = params.low_x + (2.0 * params.radius_x);
 	let high_y = params.low_y + (2.0 * params.radius_y);
@@ -401,8 +322,8 @@ pub fn int_calculate(params: &Parameters) -> Vec<Vec<usize>> {
 	let pool = ThreadPool::new(4);
 	let (tx, rx) = mpsc::channel();
 
-	for x in linspace::<f64>(params.low_x, high_x, width){
-		for y in linspace::<f64>(params.low_y, high_y, height){
+	for x in linspace::<f64>(params.low_x, high_x, width as usize){
+		for y in linspace::<f64>(params.low_y, high_y, height as usize){
 			let tx = tx.clone();
 			let q = params.quality;
 			let b = params.bound;
@@ -420,13 +341,13 @@ pub fn int_calculate(params: &Parameters) -> Vec<Vec<usize>> {
 	pool.join();
 	drop(tx);
 
-	let mut storage: Vec<Vec<usize>> = vec![vec![0; width + 1]; height + 1];
-	let real_step = (2.0 * params.radius_x)/width as f64;
-	let imag_step = (2.0 * params.radius_y)/height as f64;
+	let mut storage: Vec<Vec<usize>> = vec![vec![0; width as usize + 1]; height as usize + 1];
+	let real_step = (2.0 * params.radius_x)/width;
+	let imag_step = (2.0 * params.radius_y)/height;
 
 	for message in rx{
-		let index = ((message.real-params.low_x)/real_step) as usize;
-		let indey = ((message.imag-params.low_y)/imag_step) as usize;
+		let index = ((message.real-params.low_x)/real_step).floor() as usize;
+		let indey = ((message.imag-params.low_y)/imag_step).floor() as usize;
 		
 		storage[indey][index] = message.value;
 	}

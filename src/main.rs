@@ -21,7 +21,6 @@ fn main() {
 		mandelbrot::output_image(params, 20, "temp.png".to_string());
 	}
 	
-	mandelbrot::heater();
 	
 	let options = eframe::NativeOptions::default();
 	eframe::run_native(
@@ -41,13 +40,13 @@ impl Default for App{
 	fn default() -> Self {
 		Self {
 			params: mandelbrot::Parameters{
-				zoom: 11858.461261560205,
-				low_x:  0.33992532398246744,
-				low_y: -0.5625025651553807,
-				radius_x: 0.0088544371553806,
-				radius_y: 0.0088544371553806,
-				quality: 2000,
-				bound: 750.0,
+				zoom: 70.0,
+				low_x: -1.94161717841592149801853209314633694422615108916317792685410,
+				low_y: -0.000229215253478385874951577968980642246994164,
+				radius_x: 1.5,
+				radius_y: 1.5,
+				quality: 200,
+				bound: 75.0,
 	
 			},
 			gamma: 0,
@@ -60,53 +59,77 @@ impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
 			let time = Instant::now();
         egui::CentralPanel::default().show(ctx, |ui| {
-			ui.label(format!("zoom: {}", self.params.zoom));
-			ui.horizontal(|ui| {
-				if ui.button("- zoom").clicked() {
-					self.params.zoom *= 4.0/5.0;
-					self.params.radius_x *= 5.0/4.0;
-					self.params.radius_y *= 5.0/4.0;
-				}
-				if ui.button("+ zoom").clicked() {
-					self.params.zoom *= 5.0/4.0;
-					self.params.radius_x *= 4.0/5.0;
-					self.params.radius_y *= 4.0/5.0;
-					self.params.quality += 1;
-				}
-			});
-			ui.label(format!("x: {}, y: {}", self.params.low_x, self.params.low_y));
-			ui.horizontal(|ui| {
-			if ui.button("left").clicked() {
-				self.params.low_x -= self.params.radius_x * 0.2;
-			}
-			ui.vertical(|ui| {
-				if ui.button("up").clicked() {
-					self.params.low_y -= self.params.radius_y * 0.2;
-				}
-				if ui.button("down").clicked() {
-					self.params.low_y += self.params.radius_y * 0.2;
-				}
-			});
-			if ui.button("right").clicked() {
-				self.params.low_x += self.params.radius_x * 0.2;
-			}
-			});
+			ui.horizontal( |ui| {
+				ui.vertical( |ui | {
+					egui::Grid::new("movement").show(ui, |ui| {
+						ui.label("");
+						if ui.button("up").clicked() {
+							self.params.low_y -= self.params.radius_y * 0.2;
+						}
+						ui.label("");
+						ui.end_row();
+						
+						if ui.button("left").clicked() {
+							self.params.low_x -= self.params.radius_x * 0.2;
+						}
+						ui.label("");
+						if ui.button("right").clicked() {
+							self.params.low_x += self.params.radius_x * 0.2;
+						}
+						ui.end_row();
+						
+						ui.label("");
+						if ui.button("down").clicked() {
+							self.params.low_y += self.params.radius_y * 0.2;
+						}
+						ui.label("");
+					});
+					
+					egui::Grid::new("other controls").min_col_width(100.0).show(ui, |ui| {
+						if ui.button("increase zoom").clicked() {
+							self.params.scale(5.0/4.0);
+						}
+						if ui.button("decrease zoom").clicked() {
+							self.params.scale(4.0/5.0);
+						}
+						ui.end_row();
+						
+						if ui.button("increase quality").clicked() {
+							self.params.quality += 10;
+						}
+						if ui.button("decrease quality").clicked() {
+							self.params.quality -= 10;
+						}
+						ui.end_row();
+						
+						if ui.button("increase gamma").clicked() {
+							self.gamma += 10;
+						}
+						if ui.button("decrease gamma").clicked() {
+							self.gamma -= 10;
+						}
+						ui.end_row();
+						
+						if ui.button("increase window size").clicked() {
+							self.params.radius_x *= 5.0/4.0;
+							self.params.radius_y *= 5.0/4.0;
+						}
+						if ui.button("decrease window size").clicked() {
+							self.params.radius_x *= 4.0/5.0;
+							self.params.radius_y *= 4.0/5.0;
+						}
+					});
 			
-			ui.horizontal(|ui| {
-				if ui.button("increase window size").clicked() {
-					self.params.zoom *= 5.0/4.0;
-				}
-				if ui.button("decrease window size").clicked() {
-					self.params.zoom *= 4.0/5.0;
-				}
+				});
+					
+				ui.vertical( |ui| {
+					ui.label(format!("real: {}, imag: {}", self.params.low_x, self.params.low_y));
+					ui.label(format!("zoom: {}", self.params.zoom));
+					ui.label(format!("quality: {}", self.params.quality));
+				});
 			});
+/*
 			ui.horizontal(|ui| {
-				if ui.button("increase quality").clicked() {
-					self.params.quality += 10;
-				}
-				if ui.button("decrease quality").clicked() {
-					self.params.quality -= 10;
-				}
 				ui.label(format!("{}", self.params.quality));
 			});
 			ui.horizontal(|ui| {
@@ -137,8 +160,9 @@ impl eframe::App for App {
 				}
 				ui.label(format!("{}", self.params.bound));
 			});
+			});
 			
-	
+*/	
 			self.params.low_x -= self.params.radius_x;
 			self.params.low_y -= self.params.radius_y;
 			let display = egui_extras::image::RetainedImage::from_color_image("text", render_int(mandelbrot::int_calculate(&self.params), self.gamma, &self.map));
