@@ -1,10 +1,9 @@
-use num::complex::Complex;
-use itertools_num::linspace;
 use std::sync::mpsc;
 use threadpool::ThreadPool;
 use image::RgbImage;
 use std::cmp::{min, max};
-use num::abs;
+use rug::{Complex, Assign, Float};
+use std::convert::TryFrom;
 
 
 #[cfg(feature = "all")]
@@ -18,24 +17,47 @@ pub struct Parameters{
 	/*
 	* struct that takes stuff from the UI and gives it to the renderer. little bit janky
 	*/
-    pub zoom: f64,
+    pub zoom: Float,
 
-    pub low_x: f64,
+    pub low_x: Float,
 
-    pub low_y: f64,
+    pub low_y: Float,
 
-    pub radius_x: f64,
-    pub radius_y: f64,
+    pub radius_x: Float,
+    pub radius_y: Float,
 
     pub quality: usize,
 	pub bound: f64,
 }
 
 impl Parameters {
+	/*
+	* commonly used things 
+	*/
 	pub fn scale(&mut self, factor: f64) {
+		/*
+		* change zoom while keeping window size the same
+		*/
 		self.zoom *= factor;
 		self.radius_x *= 1.0/factor;
 		self.radius_y *= 1.0/factor;
+	}
+	
+	pub fn change_precision(&mut self, precision: isize) {
+		/*
+		* change precision for all the Floats
+		*/
+		let precision2: u32 = if precision.is_negative() {
+			self.zoom.prec() - u32::try_from(precision * -1).unwrap()
+		} else {
+			self.zoom.prec() + u32::try_from(precision).unwrap()
+		};
+
+		self.zoom.set_prec(precision2);
+		self.low_x.set_prec(precision2);
+		self.low_y.set_prec(precision2);
+		self.radius_x.set_prec(precision2);
+		self.radius_y.set_prec(precision2);
 	}
 }
 
@@ -89,19 +111,41 @@ fn get_params(param_hostname: &str) {
     println!("{:?}", buf);
 }
 
-fn bounded_test(c: &Complex<f64>, iterations: usize, bound: f64) -> usize{
+fn bounded(c: &Complex, iterations: usize, bound: f64, precision: u32) -> usize{
+	/*
+	* older varient of the other one. It checks if a point goes above bound in iterations tests
+	*/
+    let mut z = Complex::with_val(precision, (0.0, 0.0));
+    let mut i: usize = 0;
+    loop{
+		z = z.square();
+		z += c;
+		// the path the code takes if it diverges to infinity
+        if abs(&z) > bound {
+            return i;
+        }
+		// the path the code takes if it stays bounded
+        if i >= iterations{
+            return 0;
+        }
+        i+=1;
+    }
+}
+
+#[cfg(feature = "all")]
+fn bounded_test(c: &Complex, iterations: usize, bound: Float) -> usize{
 	/*
 	* checks if the gradient at a point goes above bound in iterations loops
 	*/
-    let mut z = Complex::new(0.0, 0.0);
+    let mut z = Complex::with_val(128, (0, 0));
 
     let mut i = 0;
 	let mut last_z;
     loop{
-		last_z = z;
-        z = z.powf(2.0) + c;
+		last_z = z.clone();
+        z = z.pow(Complex::with_val(4, (2, 0))) + c;
 		// the path the code takes if it diverges to infinity
-        if abs(last_z.norm() - z.norm()) > bound {
+        if (last_z.abs() - &z.abs()).real() > &bound {
             return i;
         }
 		// the path the code takes if it stays bounded
@@ -176,7 +220,7 @@ pub fn initcolormap() -> Vec<ReturnColor> {
 	/*
 	* makes a colormap with a bunch of lerping. Try to avoid running too much.
 	*/
-	let stops = vec![0.0, 255.0/3.0, 255.0/1.5, 256.0];
+	let stops = vec![0.0, 85.0, 85.0 * 2.0, 85.0 * 3.0, 85.0 * 4.0, 85.0 * 5.0];
 
 	let black = ReturnColor{
 		r: 0,
@@ -190,18 +234,31 @@ pub fn initcolormap() -> Vec<ReturnColor> {
 		b: 255,
 	};
 	
-	let pink = ReturnColor{
-		r: 200,
+	let blue = ReturnColor{
+		r: 20,
 		g: 150,
 		b: 255,
 	};
+	
+	let green = ReturnColor{
+		r: 0,
+		g: 255,
+		b: 100,
+	};
+	
+	let yellow = ReturnColor{
+		r: 150,
+		g: 200,
+		b: 0,
+	};
+	
 	let white = ReturnColor{
 		r: 255,
 		g: 255,
 		b: 255,
 	};
 	
-	let colors = vec![black, purple, pink, white];
+	let colors = vec![black, purple, blue, green, yellow, white];
 	
 	let mut finals: Vec<ReturnColor> = vec![];
 
@@ -237,14 +294,6 @@ pub fn initcolormap() -> Vec<ReturnColor> {
 	}
 	finals
 }
-/*
-pub fn colormap<T>(value: <T>, map: &Vec<ReturnColor>) -> ReturnColor {
-	/* 
-	* might not even need this tbh
-	*/
-	map[value as usize]
-}
-*/
 
 #[cfg(feature = "all")]
 pub fn test_lerp(){
@@ -268,7 +317,7 @@ pub fn test_lerp(){
 #[cfg(feature = "all")]
 fn calculate(parameters: &Parameters) -> String {
 	/*
-	* single thread calculation of the julia sets
+	* single thread calculation of the mandelbrot set. may be faster for small images and single threaded machines
 	*/
     let low_x = parameters.low_x;
     let high_x = low_x + 2.0 * parameters.radius_x;
@@ -284,7 +333,7 @@ fn calculate(parameters: &Parameters) -> String {
     let mut results = String::new();
     
     for y in reals{
-        let cs = linspace::<f64>(low_y,high_y,height);
+        let cs = linspace::<Float>(low_y,high_y,height);
         for x in cs{
             let c = Complex::new(x, y);
             
@@ -299,40 +348,60 @@ fn calculate(parameters: &Parameters) -> String {
     results = results + "d";
     results
 }
+
 #[cfg(feature = "all")]
 struct ValueAtPoint{
-	real: f64,
-	imag: f64,
+	/*
+	* only kept around for compatability with calculate
+	*/
+	real: Float,
+	imag: Float,
 	value: String,
 }
 
+#[derive(Debug)]
 struct IntAtPoint{
-	imag: f64,
-	real: f64,
+	imag: Float,
+	real: Float,
 	value: usize,
 }
 
-pub fn int_calculate(params: &Parameters) -> Vec<Vec<usize>> {
-	let width = params.radius_x * 2.0 * params.zoom;
-	let height = params.radius_y * 2.0 * params.zoom;
+pub fn int_calculate(params: &Parameters, precision: u32) -> Vec<Vec<usize>> {
+	/*
+	* calculates the value at a point in parallel. returns a list of integers which maybe should just be one array
+	*/
+
+
+	// defining constants for the linspace
+	let aaaa = Float::with_val(precision, 2.0) * params.zoom.clone();
+	let width: usize = to_usize(&(&aaaa * params.radius_x.clone())).expect("width is WAY too big");
+	let height: usize = to_usize(&(aaaa * params.radius_y.clone())).expect("height is WAY too big");
 	
-	let high_x = params.low_x + (2.0 * params.radius_x);
-	let high_y = params.low_y + (2.0 * params.radius_y);
+	
+	let mut high_x = Float::new(precision);
+	high_x.assign(params.low_x.clone() + (2.0 * params.radius_x.clone()));
+
+	let mut high_y = Float::new(precision);
+	high_y.assign(params.low_y.clone() + (2.0 * params.radius_y.clone()));
+	
 	
 	let pool = ThreadPool::new(4);
 	let (tx, rx) = mpsc::channel();
 
-	for x in linspace::<f64>(params.low_x, high_x, width as usize){
-		for y in linspace::<f64>(params.low_y, high_y, height as usize){
+	for x in linspace(params.low_x.clone(), high_x.clone(), width){
+		for y in linspace(params.low_y.clone(), high_y.clone(), height){
+			
 			let tx = tx.clone();
 			let q = params.quality;
 			let b = params.bound;
+			let ax = x.clone();
+			let ay = y.clone();
 			pool.execute( move || {
-				let c = Complex::new(x, y);
+				let c = Complex::with_val(precision, (ax.clone(), ay.clone()));
 				tx.send(IntAtPoint{
-							real: x,
-							imag: y,
-							value: bounded_test(&c, q, b),
+							real: ax,
+							imag: ay,
+							value: bounded(&c, q, b, precision),
 						}).expect("error calculating");
 				});
 		}
@@ -341,16 +410,17 @@ pub fn int_calculate(params: &Parameters) -> Vec<Vec<usize>> {
 	pool.join();
 	drop(tx);
 
-	let mut storage: Vec<Vec<usize>> = vec![vec![0; width as usize + 1]; height as usize + 1];
-	let real_step = (2.0 * params.radius_x)/width;
-	let imag_step = (2.0 * params.radius_y)/height;
+	let mut storage: Vec<Vec<usize>> = vec![vec![0; width + 1]; height + 1];
 
 	for message in rx{
-		let index = ((message.real-params.low_x)/real_step).floor() as usize;
-		let indey = ((message.imag-params.low_y)/imag_step).floor() as usize;
+		let index = to_usize(&message.real.mul_sub_mul(&params.zoom, &params.low_x, &params.zoom)).unwrap();
+		let indey = to_usize(&message.imag.mul_sub_mul(&params.zoom, &params.low_y, &params.zoom)).unwrap();
 		
+		let index = min(index, storage[0].len()-1);
+		let indey = min(indey, storage.len()-1);
 		storage[indey][index] = message.value;
 	}
+	println!("{}", &params.zoom.prec());
 	storage
 }
 
@@ -360,7 +430,7 @@ pub fn output_image(params: &Parameters, gamma: isize, path: String) {
 	*/
 	let map = initcolormap();
 	println!("gonna calculate");
-	let values = int_calculate(params);
+	let values = int_calculate(params, 53);
 	println!("calculated");
 	let width = values.len();
 	let height = values[0].len();
@@ -419,17 +489,61 @@ pub fn parse(data: String) -> Vec<Vec<u8>>{
 pub fn heater() {
 	let mut loops = 0;
 	let params = Parameters{
-		zoom: 11858.461261560205,
-		low_x:  0.33992532398246744,
-		low_y: -0.5625025651553807,
-		radius_x: 1.,
-		radius_y: 1.,
+		zoom: Float::with_val(128, 11858.461261560205),
+		low_x: Float::with_val(128, 0.33992532398246744),
+		low_y: Float::with_val(128, -0.5625025651553807),
+		radius_x: Float::with_val(128, 1.),
+		radius_y: Float::with_val(128, 1.),
 		quality: 2000,
 		bound: 750.0,
 	};
 	loop{
-		int_calculate(&params);
+		int_calculate(&params, 53);
 		loops += 1;
 		println!("loop: {loops}");
 	}
 }	
+
+struct Linspace{
+	start: Float,
+	end: Float,
+	index: usize,
+	step: Float,
+}
+
+impl Iterator for Linspace{
+	
+	type Item = Float;
+	
+	fn next(&mut self) -> Option<Self::Item> {
+		let calculated = self.start.clone() + (self.index * self.step.clone());
+		self.index += 1;
+		if calculated > self.end {
+			return None;
+		}
+		else {
+			return Some(calculated)
+		}
+	}
+}
+
+fn linspace(low: Float, high: Float, num: usize) -> Linspace {
+	let step = (high.clone() - low.clone())/Float::with_val(32, num);
+	Linspace {
+		start: low,
+		end: high,
+		index: 0,
+		step,
+	}
+}
+
+fn to_usize(input: &Float) -> Option<usize> {
+	input.to_integer().unwrap().to_usize()
+}
+
+fn abs(val: &Complex) -> f64{
+	let real = val.real().to_f64();
+	let imag = val.imag().to_f64();
+	
+	real.powf(2.0) + imag.powf(2.0) 
+}

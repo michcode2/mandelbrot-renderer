@@ -12,6 +12,9 @@ eframe = "0.19.0"
 egui_extras = "0.19.0"
 threadpool = "1.8.1"
 image = "0.24.5"
+rug = "1.19.0"
+gmp-mpfr-sys = { version = "1.5.0", features=["use-system-libs"] }
+
 
 [lib]
 name = "mandelbrot"

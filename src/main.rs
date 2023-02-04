@@ -2,19 +2,20 @@ extern crate mandelbrot;
 use eframe::egui;
 use std::cmp::{min, max};
 use std::time::{Duration, Instant};
+use rug::Float;
 
 fn main() {
 	if cfg!(render){
 		let a = f64::powf(1.1, 0.5); //adjustment factor, means its the time that changes rather than spatial dimensions
 		let r = 0.0008112963841460683 * a;
 		let params = &mandelbrot::Parameters{
-			zoom: 70681.93710780267 * a,
-			radius_x: r, 
-			radius_y: r,
-			low_x:  0.3227715843073171 - r,
-			low_y: 0.03673122887058994 - r,
-			quality: 20000,
-			bound: 10000.0,
+			zoom: Float::with_val(128, 70681.93710780267 * a),
+			radius_x: Float::with_val(128, r,),
+			radius_y: Float::with_val(128, r),
+			low_x:  Float::with_val(128, 0.3227715843073171 - r),
+			low_y: Float::with_val(128, 0.03673122887058994 - r),
+			quality: 1000,
+			bound: 100.0,
 		};
 		
 
@@ -34,23 +35,25 @@ struct App {
 	params: mandelbrot::Parameters,
 	gamma: isize,
 	map: Vec<mandelbrot::ReturnColor>,
+	precision: u32,
 }
 
 impl Default for App{
 	fn default() -> Self {
 		Self {
 			params: mandelbrot::Parameters{
-				zoom: 70.0,
-				low_x: -1.94161717841592149801853209314633694422615108916317792685410,
-				low_y: -0.000229215253478385874951577968980642246994164,
-				radius_x: 1.5,
-				radius_y: 1.5,
-				quality: 200,
+				zoom: Float::with_val(53, 7889508096252469.0),
+				low_x: Float::with_val(53, -1.94161717841592149801853209314633694422615108916317792685410),
+				low_y: Float::with_val(53, -0.000229215253478385874951577968980642246994164),
+				radius_x: Float::with_val(53, 4.3610323457736771e-15),
+				radius_y: Float::with_val(53, 4.3610323457736771e-15),
+				quality: 600,
 				bound: 75.0,
 	
 			},
-			gamma: 0,
+			gamma: 300,
 			map: mandelbrot::initcolormap(),
+			precision: 53,
 		}
 	}
 }
@@ -64,23 +67,23 @@ impl eframe::App for App {
 					egui::Grid::new("movement").show(ui, |ui| {
 						ui.label("");
 						if ui.button("up").clicked() {
-							self.params.low_y -= self.params.radius_y * 0.2;
+							self.params.low_y -= self.params.radius_y.clone() * 0.2;
 						}
 						ui.label("");
 						ui.end_row();
 						
 						if ui.button("left").clicked() {
-							self.params.low_x -= self.params.radius_x * 0.2;
+							self.params.low_x -= self.params.radius_x.clone() * 0.2;
 						}
 						ui.label("");
 						if ui.button("right").clicked() {
-							self.params.low_x += self.params.radius_x * 0.2;
+							self.params.low_x += self.params.radius_x.clone() * 0.2;
 						}
 						ui.end_row();
 						
 						ui.label("");
 						if ui.button("down").clicked() {
-							self.params.low_y += self.params.radius_y * 0.2;
+							self.params.low_y += self.params.radius_y.clone() * 0.2;
 						}
 						ui.label("");
 					});
@@ -111,13 +114,22 @@ impl eframe::App for App {
 						ui.end_row();
 						
 						if ui.button("increase window size").clicked() {
-							self.params.radius_x *= 5.0/4.0;
-							self.params.radius_y *= 5.0/4.0;
+							self.params.zoom *= 5.0/4.0;
 						}
 						if ui.button("decrease window size").clicked() {
-							self.params.radius_x *= 4.0/5.0;
-							self.params.radius_y *= 4.0/5.0;
+							self.params.zoom*= 4.0/5.0;
 						}
+						ui.end_row();
+
+						if ui.button("increase accuracy").clicked() {
+							self.params.change_precision(8);	
+							self.precision += 8;
+						}
+						if ui.button("decrease accuracy").clicked() {
+							self.params.change_precision(-8);	
+							self.precision -= 8;
+						}
+					
 					});
 			
 				});
@@ -128,49 +140,15 @@ impl eframe::App for App {
 					ui.label(format!("quality: {}", self.params.quality));
 				});
 			});
-/*
-			ui.horizontal(|ui| {
-				ui.label(format!("{}", self.params.quality));
-			});
-			ui.horizontal(|ui| {
-				if ui.button("add one to zoom").clicked() {
-					self.params.zoom += 1.0;
-				}
-				if ui.button("take one from zoom").clicked() {
-					self.params.zoom-= 1.0;
-				}
-			});
-	
-			ui.horizontal(|ui| {
-				if ui.button("increase gamma").clicked() {
-					self.gamma += 20;
-				}
-				if ui.button("decrease gamma").clicked() {
-					self.gamma -= 20;
-				}
-				ui.label(format!("{}", self.gamma));
-			});
-			
-			ui.horizontal(|ui| {
-				if ui.button("increase bound").clicked() {
-					self.params.bound += 5.0;
-				}
-				if ui.button("decrease bound").clicked() {
-					self.params.bound -= 5.0;
-				}
-				ui.label(format!("{}", self.params.bound));
-			});
-			});
-			
-*/	
-			self.params.low_x -= self.params.radius_x;
-			self.params.low_y -= self.params.radius_y;
-			let display = egui_extras::image::RetainedImage::from_color_image("text", render_int(mandelbrot::int_calculate(&self.params), self.gamma, &self.map));
-			self.params.low_x += self.params.radius_x;
-			self.params.low_y += self.params.radius_y;
+
+			self.params.low_x -= self.params.radius_x.clone();
+			self.params.low_y -= self.params.radius_y.clone();
+			let display = egui_extras::image::RetainedImage::from_color_image("text", render_int(mandelbrot::int_calculate(&self.params, self.precision), self.gamma, &self.map));
+			self.params.low_x += self.params.radius_x.clone();
+			self.params.low_y += self.params.radius_y.clone();
 			display.show(ui);
 			println!("total time elapsed: {:?}", time.elapsed());
-			println!("{:?}, {}", self.params, self.gamma);
+			println!("{:?}, {}, {}", self.params, self.gamma, self.precision);
     	});    
 	}
 
@@ -183,12 +161,14 @@ fn render_int(data: Vec<Vec<usize>>, gamma: isize, map: &[mandelbrot::ReturnColo
 	let height: u16 = data.len().try_into().unwrap();
 	
 	let mut imagebuffer: Vec<u8> = vec!();
-
+	
+	let top = map.len() as isize - 1;
+	
 	for x in 0..width{
 		for y in 0..height{
 			let mut value = data[x as usize][y as usize] as isize;
 			value -= gamma;
-			value = max(0, min(255, value)); //this essentially does what mandelbrot::parse does
+			value = max(0, min(top, value)); //this essentially does what mandelbrot::parse does
 			let colors = map[value as usize];
 			imagebuffer.push(colors.r);	
 			imagebuffer.push(colors.g);
