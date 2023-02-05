@@ -4,7 +4,7 @@ use image::RgbImage;
 use std::cmp::{min, max};
 use rug::{Complex, Assign, Float};
 use std::convert::TryFrom;
-
+use num_cpus;
 
 #[cfg(feature = "all")]
 use {
@@ -385,7 +385,7 @@ pub fn int_calculate(params: &Parameters, precision: u32) -> Vec<Vec<usize>> {
 	high_y.assign(params.low_y.clone() + (2.0 * params.radius_y.clone()));
 	
 	
-	let pool = ThreadPool::new(4);
+	let pool = ThreadPool::new(num_cpus::get());
 	let (tx, rx) = mpsc::channel();
 
 	for x in linspace(params.low_x.clone(), high_x.clone(), width){
