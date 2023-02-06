@@ -2,7 +2,7 @@ use std::sync::mpsc;
 use threadpool::ThreadPool;
 use image::RgbImage;
 use std::cmp::{min, max};
-use rug::{Complex, Assign, Float};
+use rug::{Complex, Assign, Float, ops::CompleteRound};
 use std::convert::TryFrom;
 
 
@@ -220,7 +220,7 @@ pub fn initcolormap() -> Vec<ReturnColor> {
 	/*
 	* makes a colormap with a bunch of lerping. Try to avoid running too much.
 	*/
-	let stops = vec![0.0, 85.0, 85.0 * 2.0, 85.0 * 3.0, 85.0 * 4.0, 85.0 * 5.0];
+	let stops = vec![0.0, 20.0, 85.0, 255.0, 512.0, 1024.0];
 
 	let black = ReturnColor{
 		r: 0,
@@ -349,16 +349,6 @@ fn calculate(parameters: &Parameters) -> String {
     results
 }
 
-#[cfg(feature = "all")]
-struct ValueAtPoint{
-	/*
-	* only kept around for compatability with calculate
-	*/
-	real: Float,
-	imag: Float,
-	value: String,
-}
-
 #[derive(Debug)]
 struct IntAtPoint{
 	imag: Float,
@@ -373,13 +363,14 @@ pub fn int_calculate(params: &Parameters, precision: u32) -> Vec<Vec<usize>> {
 
 
 	// defining constants for the linspace
-	let aaaa = Float::with_val(precision, 2.0) * params.zoom.clone();
-	let width: usize = to_usize(&(&aaaa * params.radius_x.clone())).expect("width is WAY too big");
-	let height: usize = to_usize(&(aaaa * params.radius_y.clone())).expect("height is WAY too big");
+	let two = Float::with_val(precision, 2.0);
+	let aaaa = &two * params.zoom.clone();
+	let width: usize = to_usize(&(&aaaa * &params.radius_x).complete(precision)).expect("width is WAY too big");
+	let height: usize = to_usize(&(&aaaa * &params.radius_y).complete(precision)).expect("height is WAY too big");
 	
-	
-	let mut high_x = Float::new(precision);
-	high_x.assign(params.low_x.clone() + (2.0 * params.radius_x.clone()));
+	//change these to be mu_add!!! maybe faster!!!!
+	let mut high_x = Float::with_val(precision, params.radius_x.mul_add_ref(&two, &params.low_x));
+	//high_x.assign(params.low_x.clone() + (2.0 * params.radius_x.clone()));
 
 	let mut high_y = Float::new(precision);
 	high_y.assign(params.low_y.clone() + (2.0 * params.radius_y.clone()));
@@ -388,8 +379,8 @@ pub fn int_calculate(params: &Parameters, precision: u32) -> Vec<Vec<usize>> {
 	let pool = ThreadPool::new(4);
 	let (tx, rx) = mpsc::channel();
 
-	for x in linspace(params.low_x.clone(), high_x.clone(), width){
-		for y in linspace(params.low_y.clone(), high_y.clone(), height){
+	for x in linspace(&params.low_x, &high_x, width, precision){
+		for y in linspace(&params.low_y, &high_y, height, precision){
 			
 			let tx = tx.clone();
 			let q = params.quality;
@@ -397,7 +388,7 @@ pub fn int_calculate(params: &Parameters, precision: u32) -> Vec<Vec<usize>> {
 			let ax = x.clone();
 			let ay = y.clone();
 			pool.execute( move || {
-				let c = Complex::with_val(precision, (ax.clone(), ay.clone()));
+				let c = Complex::with_val(precision, (&ax, &ay));
 				tx.send(IntAtPoint{
 							real: ax,
 							imag: ay,
@@ -504,21 +495,21 @@ pub fn heater() {
 	}
 }	
 
-struct Linspace{
-	start: Float,
-	end: Float,
+struct Linspace<'a>{
+	start: &'a Float,
+	end: &'a Float,
 	index: usize,
 	step: Float,
 }
 
-impl Iterator for Linspace{
+impl Iterator for Linspace<'_>{
 	
 	type Item = Float;
 	
 	fn next(&mut self) -> Option<Self::Item> {
 		let calculated = self.start.clone() + (self.index * self.step.clone());
 		self.index += 1;
-		if calculated > self.end {
+		if &calculated > self.end {
 			return None;
 		}
 		else {
@@ -527,8 +518,9 @@ impl Iterator for Linspace{
 	}
 }
 
-fn linspace(low: Float, high: Float, num: usize) -> Linspace {
-	let step = (high.clone() - low.clone())/Float::with_val(32, num);
+fn linspace<'a>(low: &'a Float, high: &'a Float, num: usize, precision: u32) -> Linspace<'a> {
+	let temp = Float::with_val(53, num).recip();
+	let step = Float::with_val(precision, high.mul_sub_mul_ref(&temp, &low, &temp));
 	Linspace {
 		start: low,
 		end: high,

@@ -42,18 +42,18 @@ impl Default for App{
 	fn default() -> Self {
 		Self {
 			params: mandelbrot::Parameters{
-				zoom: Float::with_val(53, 7889508096252469.0),
-				low_x: Float::with_val(53, -1.94161717841592149801853209314633694422615108916317792685410),
-				low_y: Float::with_val(53, -0.000229215253478385874951577968980642246994164),
-				radius_x: Float::with_val(53, 4.3610323457736771e-15),
-				radius_y: Float::with_val(53, 4.3610323457736771e-15),
-				quality: 600,
-				bound: 75.0,
+				zoom: Float::with_val(32, 70),
+				low_x: Float::with_val(32, 0.25),
+				low_y: Float::with_val(32, 0.0),
+				radius_x: Float::with_val(32, 1.5),
+				radius_y: Float::with_val(32, 1.5),
+				quality: 200,
+				bound: 75.0_f64.powf(2.0),
 	
 			},
-			gamma: 300,
+			gamma: 0,
 			map: mandelbrot::initcolormap(),
-			precision: 53,
+			precision: 32,
 		}
 	}
 }
