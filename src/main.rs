@@ -1,8 +1,8 @@
 extern crate mandelbrot;
 use eframe::egui;
 use std::cmp::{min, max};
-use std::time::{Duration, Instant};
-use rug::Float;
+use std::time::Instant;
+use rug::{Float, ops::CompleteRound};
 
 fn main() {
 	if cfg!(render){
@@ -60,30 +60,31 @@ impl Default for App{
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-			let time = Instant::now();
+		let time = Instant::now();
+		let move_distance = Float::with_val(53, 2.0);
         egui::CentralPanel::default().show(ctx, |ui| {
 			ui.horizontal( |ui| {
 				ui.vertical( |ui | {
 					egui::Grid::new("movement").show(ui, |ui| {
 						ui.label("");
 						if ui.button("up").clicked() {
-							self.params.low_y -= self.params.radius_y.clone() * 0.2;
+							self.params.low_y = move_distance.mul_sub_ref(&self.params.radius_y, &self.params.low_y).complete(self.precision);
 						}
 						ui.label("");
 						ui.end_row();
 						
 						if ui.button("left").clicked() {
-							self.params.low_x -= self.params.radius_x.clone() * 0.2;
+							self.params.low_x = move_distance.mul_sub_ref(&self.params.radius_x, &self.params.low_x).complete(self.precision);
 						}
 						ui.label("");
 						if ui.button("right").clicked() {
-							self.params.low_x += self.params.radius_x.clone() * 0.2;
+							self.params.low_x = move_distance.mul_add_ref(&self.params.radius_x, &self.params.low_x).complete(self.precision);
 						}
 						ui.end_row();
 						
 						ui.label("");
 						if ui.button("down").clicked() {
-							self.params.low_y += self.params.radius_y.clone() * 0.2;
+							self.params.low_y = move_distance.mul_add_ref(&self.params.radius_y, &self.params.low_y).complete(self.precision);
 						}
 						ui.label("");
 					});
@@ -141,11 +142,11 @@ impl eframe::App for App {
 				});
 			});
 
-			self.params.low_x -= self.params.radius_x.clone();
-			self.params.low_y -= self.params.radius_y.clone();
+			self.params.low_x -= &self.params.radius_x;
+			self.params.low_y -= &self.params.radius_y;
 			let display = egui_extras::image::RetainedImage::from_color_image("text", render_int(mandelbrot::int_calculate(&self.params, self.precision), self.gamma, &self.map));
-			self.params.low_x += self.params.radius_x.clone();
-			self.params.low_y += self.params.radius_y.clone();
+			self.params.low_x += &self.params.radius_x;
+			self.params.low_y += &self.params.radius_y;
 			display.show(ui);
 			println!("total time elapsed: {:?}", time.elapsed());
 			println!("{:?}, {}, {}", self.params, self.gamma, self.precision);

@@ -2,7 +2,7 @@ use std::sync::mpsc;
 use threadpool::ThreadPool;
 use image::RgbImage;
 use std::cmp::{min, max};
-use rug::{Complex, Assign, Float, ops::CompleteRound};
+use rug::{Complex, Float, ops::CompleteRound};
 use std::convert::TryFrom;
 use num_cpus;
 
@@ -364,16 +364,14 @@ pub fn int_calculate(params: &Parameters, precision: u32) -> Vec<Vec<usize>> {
 
 	// defining constants for the linspace
 	let two = Float::with_val(precision, 2.0);
-	let aaaa = &two * params.zoom.clone();
+	let aaaa = (&two * &params.zoom).complete(precision);
 	let width: usize = to_usize(&(&aaaa * &params.radius_x).complete(precision)).expect("width is WAY too big");
 	let height: usize = to_usize(&(&aaaa * &params.radius_y).complete(precision)).expect("height is WAY too big");
 	
 	//change these to be mu_add!!! maybe faster!!!!
-	let mut high_x = Float::with_val(precision, params.radius_x.mul_add_ref(&two, &params.low_x));
-	//high_x.assign(params.low_x.clone() + (2.0 * params.radius_x.clone()));
+	let high_x = Float::with_val(precision, params.radius_x.mul_add_ref(&two, &params.low_x));
 
-	let mut high_y = Float::new(precision);
-	high_y.assign(params.low_y.clone() + (2.0 * params.radius_y.clone()));
+	let high_y = Float::with_val(precision, params.radius_y.mul_add_ref(&two, &params.low_y));
 	
 	
 	let pool = ThreadPool::new(num_cpus::get());
