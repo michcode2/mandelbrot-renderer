@@ -61,7 +61,7 @@ impl Default for App{
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
 		let time = Instant::now();
-		let move_distance = Float::with_val(53, 2.0);
+		let move_distance = Float::with_val(53, 0.2);
         egui::CentralPanel::default().show(ctx, |ui| {
 			ui.horizontal( |ui| {
 				ui.vertical( |ui | {
