@@ -356,11 +356,40 @@ struct IntAtPoint{
 	value: usize,
 }
 
-pub fn int_calculate(params: &Parameters, precision: u32) -> Vec<Vec<usize>> {
+pub struct Storage {
+	vals: Vec<usize>,
+	pub width: usize,
+	pub height: usize,
+}
+
+impl Storage {
+	fn insert(&mut self, x: usize, y: usize, val: usize) {
+		let index = (self.width * x) + y;
+		self.vals[index] = val;
+	}
+	
+	pub fn get_value(&self, x: u16, y: u16) -> Result<isize, &'static str> {
+		let index = ((self.width as u16 * y) + x) as usize;
+		
+		if index > self.vals.len() {
+			return Err("too long:(");
+		}
+		Ok(self.vals[index] as isize)
+	}
+}
+
+fn make_storage(width: usize, height: usize) -> Storage {
+	Storage {
+		vals: vec![0; (width + 1) * (height + 1)],
+		width,
+		height,
+	}
+}
+
+pub fn int_calculate(params: &Parameters, precision: u32) -> Storage{
 	/*
 	* calculates the value at a point in parallel. returns a list of integers which maybe should just be one array
 	*/
-
 
 	// defining constants for the linspace
 	let two = Float::with_val(precision, 2.0);
@@ -399,20 +428,22 @@ pub fn int_calculate(params: &Parameters, precision: u32) -> Vec<Vec<usize>> {
 	pool.join();
 	drop(tx);
 
-	let mut storage: Vec<Vec<usize>> = vec![vec![0; width + 1]; height + 1];
-
+	
+	let mut storage_struct = make_storage(width, height);
+	
 	for message in rx{
 		let index = to_usize(&message.real.mul_sub_mul(&params.zoom, &params.low_x, &params.zoom)).unwrap();
 		let indey = to_usize(&message.imag.mul_sub_mul(&params.zoom, &params.low_y, &params.zoom)).unwrap();
 		
-		let index = min(index, storage[0].len()-1);
-		let indey = min(indey, storage.len()-1);
-		storage[indey][index] = message.value;
+		let index = min(index, storage_struct.width);
+		let indey = min(indey, storage_struct.height);
+		storage_struct.insert(index, indey, message.value);
 	}
 	println!("{}", &params.zoom.prec());
-	storage
+	storage_struct
 }
 
+#[cfg(feature ="all")]
 pub fn output_image(params: &Parameters, gamma: isize, path: String) {
 	/*
 	* renders a high quality image. can take a WHILE

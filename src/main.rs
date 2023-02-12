@@ -19,7 +19,7 @@ fn main() {
 		};
 		
 
-		mandelbrot::output_image(params, 20, "temp.png".to_string());
+		//mandelbrot::output_image(params, 20, "temp.png".to_string());
 	}
 	
 	
@@ -157,9 +157,9 @@ impl eframe::App for App {
 
 }
 
-fn render_int(data: Vec<Vec<usize>>, gamma: isize, map: &[mandelbrot::ReturnColor]) -> egui::ColorImage{
-	let width: u16 = data[0].len().try_into().unwrap();
-	let height: u16 = data.len().try_into().unwrap();
+fn render_int(data: mandelbrot::Storage, gamma: isize, map: &[mandelbrot::ReturnColor]) -> egui::ColorImage{
+	let width: u16 = data.width as u16;
+	let height: u16 = data.height as u16;
 	
 	let mut imagebuffer: Vec<u8> = vec!();
 	
@@ -167,7 +167,7 @@ fn render_int(data: Vec<Vec<usize>>, gamma: isize, map: &[mandelbrot::ReturnColo
 	
 	for x in 0..width{
 		for y in 0..height{
-			let mut value = data[x as usize][y as usize] as isize;
+			let mut value = data.get_value(x, y).unwrap();
 			value -= gamma;
 			value = max(0, min(top, value)); //this essentially does what mandelbrot::parse does
 			let colors = map[value as usize];
