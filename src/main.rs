@@ -42,18 +42,18 @@ impl Default for App{
 	fn default() -> Self {
 		Self {
 			params: mandelbrot::Parameters{
-				zoom: Float::with_val(32, 70),
-				low_x: Float::with_val(32, 0.25),
-				low_y: Float::with_val(32, 0.0),
-				radius_x: Float::with_val(32, 1.5),
-				radius_y: Float::with_val(32, 1.5),
+				zoom: Float::with_val(53, 50),
+				low_x: Float::with_val(53, -0.05),
+				low_y: Float::with_val(53, 0.0),
+				radius_x: Float::with_val(53, 1.5),
+				radius_y: Float::with_val(53, 1.5),
 				quality: 200,
 				bound: 75.0_f64.powf(2.0),
 	
 			},
 			gamma: 0,
 			map: mandelbrot::initcolormap(),
-			precision: 32,
+			precision: 53,
 		}
 	}
 }
@@ -61,20 +61,20 @@ impl Default for App{
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
 		let time = Instant::now();
-		let move_distance = Float::with_val(53, 0.2);
         egui::CentralPanel::default().show(ctx, |ui| {
 			ui.horizontal( |ui| {
 				ui.vertical( |ui | {
+					let move_distance = Float::with_val(53, 0.2);
 					egui::Grid::new("movement").show(ui, |ui| {
 						ui.label("");
 						if ui.button("up").clicked() {
-							self.params.low_y = move_distance.mul_sub_ref(&self.params.radius_y, &self.params.low_y).complete(self.precision);
+							self.params.low_y = (&self.params.low_y - (&move_distance * &self.params.radius_y)).complete(self.precision);
 						}
 						ui.label("");
 						ui.end_row();
 						
 						if ui.button("left").clicked() {
-							self.params.low_x = move_distance.mul_sub_ref(&self.params.radius_x, &self.params.low_x).complete(self.precision);
+							self.params.low_x = (&self.params.low_x - (&move_distance * &self.params.radius_x)).complete(self.precision);
 						}
 						ui.label("");
 						if ui.button("right").clicked() {
