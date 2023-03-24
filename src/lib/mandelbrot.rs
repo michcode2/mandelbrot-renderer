@@ -118,8 +118,8 @@ fn bounded(c: &Complex, iterations: usize, bound: f64, precision: u32) -> usize{
     let mut z = Complex::with_val(precision, (0.0, 0.0));
     let mut i: usize = 0;
     loop{
-		z = z.square();
 		z += c;
+		z = z.square();
 		// the path the code takes if it diverges to infinity
         if abs(&z) > bound {
             return i;
@@ -380,7 +380,7 @@ impl Storage {
 
 fn make_storage(width: usize, height: usize) -> Storage {
 	Storage {
-		vals: vec![0; (width + 1) * (height + 1)],
+		vals: vec!(0; (width + 1) * (height + 1)),
 		width,
 		height,
 	}
@@ -536,7 +536,7 @@ impl Iterator for Linspace<'_>{
 	type Item = Float;
 	
 	fn next(&mut self) -> Option<Self::Item> {
-		let calculated = self.start.clone() + (self.index * self.step.clone());
+		let calculated = (self.index * &self.step).complete(self.step.prec()) + self.start;
 		self.index += 1;
 		if &calculated > self.end {
 			return None;

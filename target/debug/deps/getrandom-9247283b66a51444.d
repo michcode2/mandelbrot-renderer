@@ -1,0 +1,12 @@
+/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/deps/getrandom-9247283b66a51444.rmeta: /Users/natalie/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.8/src/lib.rs /Users/natalie/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.8/src/error.rs /Users/natalie/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.8/src/util.rs /Users/natalie/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.8/src/util_libc.rs /Users/natalie/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.8/src/use_file.rs /Users/natalie/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.8/src/macos.rs
+
+/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/deps/libgetrandom-9247283b66a51444.rlib: /Users/natalie/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.8/src/lib.rs /Users/natalie/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.8/src/error.rs /Users/natalie/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.8/src/util.rs /Users/natalie/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.8/src/util_libc.rs /Users/natalie/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.8/src/use_file.rs /Users/natalie/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.8/src/macos.rs
+
+/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/deps/getrandom-9247283b66a51444.d: /Users/natalie/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.8/src/lib.rs /Users/natalie/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.8/src/error.rs /Users/natalie/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.8/src/util.rs /Users/natalie/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.8/src/util_libc.rs /Users/natalie/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.8/src/use_file.rs /Users/natalie/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.8/src/macos.rs
+
+/Users/natalie/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.8/src/lib.rs:
+/Users/natalie/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.8/src/error.rs:
+/Users/natalie/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.8/src/util.rs:
+/Users/natalie/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.8/src/util_libc.rs:
+/Users/natalie/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.8/src/use_file.rs:
+/Users/natalie/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.8/src/macos.rs:
