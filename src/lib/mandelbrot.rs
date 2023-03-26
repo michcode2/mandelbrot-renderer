@@ -368,8 +368,8 @@ impl Storage {
 		self.vals[index] = val;
 	}
 	
-	pub fn get_value(&self, x: u16, y: u16) -> Result<isize, &'static str> {
-		let index = ((self.width as u16 * y) + x) as usize;
+	pub fn get_value(&self, x: usize, y: usize) -> Result<isize, &'static str> {
+		let index = ((self.width * y) + x);
 		
 		if index > self.vals.len() {
 			return Err("too long:(");
@@ -380,6 +380,7 @@ impl Storage {
 
 fn make_storage(width: usize, height: usize) -> Storage {
 	Storage {
+		// cant really do a with_capacity here
 		vals: vec!(0; (width + 1) * (height + 1)),
 		width,
 		height,

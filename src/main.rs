@@ -158,10 +158,11 @@ impl eframe::App for App {
 }
 
 fn render_int(data: mandelbrot::Storage, gamma: isize, map: &[mandelbrot::ReturnColor]) -> egui::ColorImage{
-	let width: u16 = data.width as u16;
-	let height: u16 = data.height as u16;
+	let width = data.width;
+	let height = data.height;
 	
-	let mut imagebuffer: Vec<u8> = vec!();
+	//let mut imagebuffer: Vec<u8> = vec!();
+	let mut imagebuffer  = Vec::with_capacity(4 * (data.width + 1) * (data.height + 1));
 	
 	let top = map.len() as isize - 1;
 	
