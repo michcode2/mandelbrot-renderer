@@ -1,1 +1,0 @@
-/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/gui: /Users/natalie/Documents/code/mandelbrot-renderer/src/lib/mandelbrot.rs /Users/natalie/Documents/code/mandelbrot-renderer/src/main.rs
