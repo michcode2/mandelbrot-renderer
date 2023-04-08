@@ -1,6 +1,5 @@
 use std::sync::mpsc;
 use threadpool::ThreadPool;
-use image::RgbImage;
 use std::cmp::{min, max};
 use rug::{Complex, Float, ops::CompleteRound};
 use std::convert::TryFrom;
@@ -119,7 +118,7 @@ fn bounded(c: &Complex, iterations: usize, bound: f64, precision: u32) -> usize{
     let mut i: usize = 0;
     loop{
 		z += c;
-		z = z.square();
+		z.mut_square();
 		// the path the code takes if it diverges to infinity
         if abs(&z) > bound {
             return i;
@@ -369,7 +368,7 @@ impl Storage {
 	}
 	
 	pub fn get_value(&self, x: usize, y: usize) -> Result<isize, &'static str> {
-		let index = ((self.width * y) + x);
+		let index = (self.width * y) + x;
 		
 		if index > self.vals.len() {
 			return Err("too long:(");

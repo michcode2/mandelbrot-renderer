@@ -5,24 +5,6 @@ use std::time::Instant;
 use rug::{Float, ops::CompleteRound};
 
 fn main() {
-	if cfg!(render){
-		let a = f64::powf(1.1, 0.5); //adjustment factor, means its the time that changes rather than spatial dimensions
-		let r = 0.0008112963841460683 * a;
-		let params = &mandelbrot::Parameters{
-			zoom: Float::with_val(128, 70681.93710780267 * a),
-			radius_x: Float::with_val(128, r,),
-			radius_y: Float::with_val(128, r),
-			low_x:  Float::with_val(128, 0.3227715843073171 - r),
-			low_y: Float::with_val(128, 0.03673122887058994 - r),
-			quality: 1000,
-			bound: 100.0,
-		};
-		
-
-		//mandelbrot::output_image(params, 20, "temp.png".to_string());
-	}
-	
-	
 	let options = eframe::NativeOptions::default();
 	eframe::run_native(
 		"My egui App",
@@ -161,7 +143,6 @@ fn render_int(data: mandelbrot::Storage, gamma: isize, map: &[mandelbrot::Return
 	let width = data.width;
 	let height = data.height;
 	
-	//let mut imagebuffer: Vec<u8> = vec!();
 	let mut imagebuffer  = Vec::with_capacity(4 * (data.width + 1) * (data.height + 1));
 	
 	let top = map.len() as isize - 1;

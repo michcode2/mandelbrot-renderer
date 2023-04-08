@@ -1,0 +1,48 @@
+<head>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<link rel="stylesheet"
+      href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+</head>
+
+<body>
+<h1> what is the mandelbrot set</h1>
+<p> the mandelbrot set is a fractal pattern made by taking a bunch of points on the complex plane, and iterating \(z_{n+1} = z_{n}^2 + c\). if the point diverges to infinity, it isn't in the mandelbrot set. If the point stays bounded, it is in the mandelbrot set. When you do that with a bunch of points between about \(\pm 1.5\) and \(\pm 1.5\), you will get the iconic shape. After this, you can look at increasingly small sections of it that almost always have something interesting going on </p>
+
+<h1> how to make a basic version </h1>
+
+<p>for this, i will output the data to a <a href="https://netpbm.sourceforge.net/doc/ppm.html">.ppm file</a> and use that to display the image, it is always possible to use PyGame or something instead. </p>
+
+<h3> finding the value at a point </h3>
+the basic thing that you need to find a value at a point is to find the real and imaginary \((x\) and \(y)\) values at a point. Then, they are added to a complex number \((Z\)), which then gets squared. Then, you check if the value is diverging. I'm not smart enough to know a good way to do this, so i just check if it goes above a given value. If it hasn't been too many cycles and the value of \(Z\) isn't diverging, you add the values of the point again, square it, check, and repeat.
+
+<pre>
+<code>
+def bounded(c_real, c_imag, loops, top):
+    '''this takes in a point called C and checks if it goes above [top] within [loops] iterations'''
+
+
+    z_real = 0
+    z_imag = 0
+
+    for i in range(loops):
+        # add the point to Z
+        temp_real = z_real + c_real
+        temp_imag = z_imag + c_imag
+
+        # this is just squaring a complex number
+        z_real = (temp_real * temp_real) - (temp_imag * temp_imag)
+        z_imag = 2 * temp_real * temp_imag
+
+        # check if the absolute value of the number goes above top
+        if ((z_real * z_real) + (z_imag * z_imag) > top * top):
+            # if it does, stop execution and say how long it took
+            return i
+
+    # if the point stayed bounded the whole time, return 0 to say how long it took
+    return 0
+</code>
+</pre>
+
+<body>
