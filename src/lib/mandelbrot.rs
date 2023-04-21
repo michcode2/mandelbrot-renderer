@@ -215,11 +215,73 @@ pub fn filter2(value: f64, lerped: f64) -> ReturnColor {
 	}
 }
 
+pub struct Cartographer {
+// struct to store stuff to make colormaps easier. This belongs in a vec
+	color: ReturnColor,
+	stop: f64,
+}
+
+pub fn return_color(r: u8, g: u8, b: u8) -> ReturnColor {
+	ReturnColor{
+		r,
+		g,
+		b,
+	}
+}
+
+pub fn cartographer(color: ReturnColor, stop: f64) -> Cartographer {
+	Cartographer {
+		color,
+		stop,
+	}
+}
+
+pub fn make_colormap(colors: Vec<Cartographer>) -> Vec<ReturnColor> {
+	let mut finals: Vec<ReturnColor> = vec![];
+
+	for i in 0..colors.len()-1 {
+		let r_lerp = FourValues {
+			min_in: colors[i].stop,
+			max_in: colors[i+1].stop,
+			min_out: colors[i].color.r as f64,
+			max_out: colors[i+1].color.r as f64,
+
+		};
+
+		let g_lerp = FourValues {
+			min_in: colors[i].stop,
+			max_in: colors[i+1].stop,
+			min_out: colors[i].color.g as f64,
+			max_out: colors[i+1].color.g as f64,
+
+		};
+
+		let b_lerp = FourValues {
+			min_in: colors[i].stop,
+			max_in: colors[i+1].stop,
+			min_out: colors[i].color.b as f64,
+			max_out: colors[i+1].color.b as f64,
+
+		};
+		
+		for j in colors[i].stop as usize..colors[i+1].stop as usize {
+			let j = j as f64;
+			finals.push(ReturnColor {
+				r: r_lerp.lerp(&j) as u8,
+				g: g_lerp.lerp(&j) as u8,
+				b: b_lerp.lerp(&j) as u8,
+			});
+		}
+	
+	}
+	finals
+}
+
 pub fn initcolormap() -> Vec<ReturnColor> {
 	/*
 	* makes a colormap with a bunch of lerping. Try to avoid running too much.
 	*/
-	let stops = vec![0.0, 20.0, 85.0, 255.0, 512.0, 1024.0];
+	let stops = vec![0.0, 100.0, 200.0, 300.0, 400.0, 500.0, 650.0, 800.0, 950.0, 1150.0, 1400.0];
 
 	let black = ReturnColor{
 		r: 0,
@@ -232,32 +294,57 @@ pub fn initcolormap() -> Vec<ReturnColor> {
 		g: 50,
 		b: 255,
 	};
-	
+	let pink = ReturnColor{
+		r: 228,
+		g: 50,
+		b: 255
+	};
+
 	let blue = ReturnColor{
-		r: 20,
-		g: 150,
+		r: 0,
+		g: 13,
 		b: 255,
 	};
-	
+
+	let yellow = ReturnColor{
+		r:255,
+		g:255,
+		b:0,
+	};
+
 	let green = ReturnColor{
 		r: 0,
-		g: 255,
-		b: 100,
+		g:255,
+		b:0,
 	};
-	
-	let yellow = ReturnColor{
-		r: 150,
-		g: 200,
-		b: 0,
+	let red = ReturnColor{
+		r:230, 
+		g: 66, 
+		b:16,
+	};
+	let lightblue = ReturnColor{
+		r:122,
+		g:158,
+		b:255,
+	};
+	let lightpurple = ReturnColor{
+		r:198,
+		g: 122,
+		b: 255,
+	};
+	let lightgreen = ReturnColor{
+		r:131,
+		g:255,
+		b:122,
 	};
 	
 	let white = ReturnColor{
-		r: 255,
-		g: 255,
-		b: 255,
+		r:255,
+		g:255,
+		b:255,
 	};
 	
-	let colors = vec![black, purple, blue, green, yellow, white];
+	let colors = vec![black, purple, pink, blue, yellow, green, red, lightblue, lightpurple, lightgreen, white];
 	
 	let mut finals: Vec<ReturnColor> = vec![];
 
@@ -439,7 +526,6 @@ pub fn int_calculate(params: &Parameters, precision: u32) -> Storage{
 		let indey = min(indey, storage_struct.height);
 		storage_struct.insert(index, indey, message.value);
 	}
-	println!("{}", &params.zoom.prec());
 	storage_struct
 }
 
