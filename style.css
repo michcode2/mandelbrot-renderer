@@ -1,0 +1,17 @@
+body {
+	font-family: Verdana, sans-serif;
+}
+
+.code {
+	white-space: pre-wrap;
+	background-color: #ccc;
+	border-radius: 15px;
+	padding: 0px;
+}
+
+.box {
+	border-radius: 15px;
+	border: 1px solid black;
+	padding-left: 15px;
+	padding-rigt: 15px;
+}

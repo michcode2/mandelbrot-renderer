@@ -118,7 +118,7 @@ fn bounded(c: &Complex, iterations: usize, bound: f64, precision: u32) -> usize{
     let mut i: usize = 0;
     loop{
 		z += c;
-		z.mut_square();
+		z.square_mut();
 		// the path the code takes if it diverges to infinity
         if abs(&z) > bound {
             return i;
