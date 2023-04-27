@@ -121,6 +121,13 @@ impl eframe::App for App {
 					ui.label(format!("real: {}, imag: {}", self.params.low_x, self.params.low_y));
 					ui.label(format!("zoom: {}", self.params.zoom));
 					ui.label(format!("quality: {}", self.params.quality));
+
+					if ui.button("output at full resolution").clicked() {
+						println!("low x: {:.}", self.params.low_x);
+						println!("low y: {:.}", self.params.low_y);
+						println!("zoom: {:.}", self.params.zoom);
+						println!("precision: {}", self.precision);
+					}
 				});
 			});
 
@@ -134,10 +141,9 @@ impl eframe::App for App {
 			println!("{:?}, {}, {}", self.params, self.gamma, self.precision);
     	});    
 	}
-
-
-
 }
+
+
 
 fn render_int(data: mandelbrot::Storage, gamma: isize, map: &[mandelbrot::ReturnColor]) -> egui::ColorImage{
 	let width = data.width;
