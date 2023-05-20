@@ -3,6 +3,8 @@ use eframe::egui;
 use std::cmp::{min, max};
 use std::time::Instant;
 use rug::{Float, ops::CompleteRound};
+use std::fs::File;
+use std::io::Write;
 
 fn main() {
 	let options = eframe::NativeOptions::default();
@@ -123,12 +125,17 @@ impl eframe::App for App {
 					ui.label(format!("quality: {}", self.params.quality));
 
 					if ui.button("output at full resolution").clicked() {
-						println!("low x: {:.}", self.params.low_x);
-						println!("low y: {:.}", self.params.low_y);
-						println!("zoom: {:.}", self.params.zoom);
+						println!("low x: {:.*}", (self.precision + 1) as usize, self.params.low_x );
+						println!("low y: {:.*}", (self.precision + 1) as usize, self.params.low_y);
+						println!("zoom: {:.*}", (self.precision + 1) as usize, self.params.zoom);
 						println!("precision: {}", self.precision);
 					}
+
+					if ui.button("final parameters to a file").clicked() {
+						write_final_params(self.params.low_x.clone(), self.params.low_y.clone(), self.params.zoom.clone(), self.precision);
+					}
 				});
+
 			});
 
 			self.params.low_x -= &self.params.radius_x;
@@ -143,6 +150,11 @@ impl eframe::App for App {
 	}
 }
 
+fn write_final_params(low_x: Float, low_y: Float, zoom: Float, precision: u32){
+	let mut f = File::create("final.nat").unwrap();
+	let digits = (precision + 1) as usize;
+	f.write_all(&format!("{:.*}\n{:.*}\n{:.*}", digits, low_x, digits, low_y, digits, zoom).as_bytes()).unwrap();
+}
 
 
 fn render_int(data: mandelbrot::Storage, gamma: isize, map: &[mandelbrot::ReturnColor]) -> egui::ColorImage{
