@@ -153,7 +153,7 @@ impl eframe::App for App {
 fn write_final_params(low_x: Float, low_y: Float, zoom: Float, precision: u32){
 	let mut f = File::create("final.nat").unwrap();
 	let digits = (precision + 1) as usize;
-	f.write_all(&format!("{:.*}\n{:.*}\n{:.*}", digits, low_x, digits, low_y, digits, zoom).as_bytes()).unwrap();
+	f.write_all(&format!("{:.*}\n{:.*}\n{:.*}\n{}\n", digits, low_x, digits, low_y, digits, zoom, precision).as_bytes()).unwrap();
 }
 
 
