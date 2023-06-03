@@ -1,0 +1,11 @@
+/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/deps/eframe-a573e9bca2ca7b42.rmeta: /Users/natalie/.cargo/registry/src/index.crates.io-6f17d22bba15001f/eframe-0.19.0/src/lib.rs /Users/natalie/.cargo/registry/src/index.crates.io-6f17d22bba15001f/eframe-0.19.0/src/epi.rs /Users/natalie/.cargo/registry/src/index.crates.io-6f17d22bba15001f/eframe-0.19.0/src/native/mod.rs /Users/natalie/.cargo/registry/src/index.crates.io-6f17d22bba15001f/eframe-0.19.0/src/native/epi_integration.rs /Users/natalie/.cargo/registry/src/index.crates.io-6f17d22bba15001f/eframe-0.19.0/src/native/run.rs
+
+/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/deps/libeframe-a573e9bca2ca7b42.rlib: /Users/natalie/.cargo/registry/src/index.crates.io-6f17d22bba15001f/eframe-0.19.0/src/lib.rs /Users/natalie/.cargo/registry/src/index.crates.io-6f17d22bba15001f/eframe-0.19.0/src/epi.rs /Users/natalie/.cargo/registry/src/index.crates.io-6f17d22bba15001f/eframe-0.19.0/src/native/mod.rs /Users/natalie/.cargo/registry/src/index.crates.io-6f17d22bba15001f/eframe-0.19.0/src/native/epi_integration.rs /Users/natalie/.cargo/registry/src/index.crates.io-6f17d22bba15001f/eframe-0.19.0/src/native/run.rs
+
+/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/deps/eframe-a573e9bca2ca7b42.d: /Users/natalie/.cargo/registry/src/index.crates.io-6f17d22bba15001f/eframe-0.19.0/src/lib.rs /Users/natalie/.cargo/registry/src/index.crates.io-6f17d22bba15001f/eframe-0.19.0/src/epi.rs /Users/natalie/.cargo/registry/src/index.crates.io-6f17d22bba15001f/eframe-0.19.0/src/native/mod.rs /Users/natalie/.cargo/registry/src/index.crates.io-6f17d22bba15001f/eframe-0.19.0/src/native/epi_integration.rs /Users/natalie/.cargo/registry/src/index.crates.io-6f17d22bba15001f/eframe-0.19.0/src/native/run.rs
+
+/Users/natalie/.cargo/registry/src/index.crates.io-6f17d22bba15001f/eframe-0.19.0/src/lib.rs:
+/Users/natalie/.cargo/registry/src/index.crates.io-6f17d22bba15001f/eframe-0.19.0/src/epi.rs:
+/Users/natalie/.cargo/registry/src/index.crates.io-6f17d22bba15001f/eframe-0.19.0/src/native/mod.rs:
+/Users/natalie/.cargo/registry/src/index.crates.io-6f17d22bba15001f/eframe-0.19.0/src/native/epi_integration.rs:
+/Users/natalie/.cargo/registry/src/index.crates.io-6f17d22bba15001f/eframe-0.19.0/src/native/run.rs:
