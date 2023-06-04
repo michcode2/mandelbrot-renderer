@@ -1,4 +1,4 @@
-use std::sync::{Mutex, Arc};
+use std::sync::mpsc;
 use threadpool::ThreadPool;
 use std::cmp::{min, max};
 use rug::{Complex, Float, ops::CompleteRound};
@@ -435,7 +435,7 @@ fn calculate(parameters: &Parameters) -> String {
     results
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct IntAtPoint{
 	imag: Float,
 	real: Float,
@@ -484,50 +484,43 @@ pub fn int_calculate(params: &Parameters, precision: u32) -> Storage{
 	let width: usize = to_usize(&(&aaaa * &params.radius_x).complete(precision)).expect("width is WAY too big");
 	let height: usize = to_usize(&(&aaaa * &params.radius_y).complete(precision)).expect("height is WAY too big");
 	
+	//change these to be mu_add!!! maybe faster!!!!
 	let high_x = Float::with_val(precision, params.radius_x.mul_add_ref(&two, &params.low_x));
 
 	let high_y = Float::with_val(precision, params.radius_y.mul_add_ref(&two, &params.low_y));
 	
 	
 	let pool = ThreadPool::new(num_cpus::get());
-
-	let values = Arc::new(Mutex::new(vec!()));
+	let (tx, rx) = mpsc::channel();
 
 	for x in linspace(&params.low_x, &high_x, width, precision){
 		for y in linspace(&params.low_y, &high_y, height, precision){
 			
-			let vals = Arc::clone(&values);
+			let tx = tx.clone();
 			let q = params.quality;
 			let b = params.bound;
 			let ax = x.clone();
 			let ay = y.clone();
 			pool.execute( move || {
 				let c = Complex::with_val(precision, (&ax, &ay));
-				let mut vec = vals.lock().unwrap();
-				vec.push(IntAtPoint{
+				tx.send(IntAtPoint{
 							real: ax,
 							imag: ay,
 							value: bounded(&c, q, b, precision),
-						});
+						}).expect("error calculating");
 				});
 		}
 	}	
 	
 	pool.join();
+	drop(tx);
 
 	
 	let mut storage_struct = make_storage(width, height);
 	
-	let responses = values.lock().unwrap();
-
-	let mut responses2: Vec<IntAtPoint> = (*responses.clone()).to_vec();
-
-
-	for mut message in  responses2 {
-		message.real.mul_sub_mul_mut(&params.zoom, &params.low_x, &params.zoom);
-		message.imag.mul_sub_mul_mut(&params.zoom, &params.low_x, &params.zoom);
-		let index = to_usize(&message.real).unwrap();
-		let indey = to_usize(&message.imag).unwrap();
+	for message in rx{
+		let index = to_usize(&message.real.mul_sub_mul(&params.zoom, &params.low_x, &params.zoom)).unwrap();
+		let indey = to_usize(&message.imag.mul_sub_mul(&params.zoom, &params.low_y, &params.zoom)).unwrap();
 		
 		let index = min(index, storage_struct.width);
 		let indey = min(indey, storage_struct.height);
@@ -535,6 +528,87 @@ pub fn int_calculate(params: &Parameters, precision: u32) -> Storage{
 	}
 	storage_struct
 }
+
+#[cfg(feature ="all")]
+pub fn output_image(params: &Parameters, gamma: isize, path: String) {
+	/*
+	* renders a high quality image. can take a WHILE
+	*/
+	let map = initcolormap();
+	println!("gonna calculate");
+	let values = int_calculate(params, 53);
+	println!("calculated");
+	let width = values.len();
+	let height = values[0].len();
+
+	let mut image_buffer: Vec<u8> = vec!(); 
+	
+	println!("putting it in buffer");
+	for x in 0..width{
+		for y in 0..height{
+			let mut value = values[x as usize][y as usize] as isize;
+			value -= gamma;
+			value = max(0, min(value, 255));
+			let colors = map[value as usize];
+
+			image_buffer.push(colors.r);
+			image_buffer.push(colors.g);
+			image_buffer.push(colors.b);
+	
+		}
+	}
+
+	println!("{:?}", image_buffer);
+	
+	let out_image = RgbImage::from_raw(width.try_into().unwrap(), height.try_into().unwrap(), image_buffer).unwrap();
+	out_image.save(path).unwrap();	
+}
+
+#[cfg(feature = "all")]
+pub fn parse(data: String) -> Vec<Vec<u8>>{
+	/*
+	* literally cannot remember
+	*/
+	let lines = data.split("\n").collect::<Vec<&str>>();
+	
+	let last_line = lines[lines.len()-1].split(",").collect::<Vec<&str>>();
+	let width = last_line[0].parse::<usize>().unwrap();
+	
+	let mut height = last_line[1].to_string();
+	height.pop().unwrap();
+	let height = height.parse::<usize>().unwrap();
+	
+	let mut out: Vec<Vec<u8>> = vec!();
+
+	for i in 0..width{
+		out.push(vec!());
+		let values = lines[i].split(",").collect::<Vec<&str>>();
+		for j in 0..height{
+			out[i].push(values[j].parse::<u8>().unwrap_or_else(|_| 0 ));
+		}
+	}
+	
+
+	out
+}
+
+pub fn heater() {
+	let mut loops = 0;
+	let params = Parameters{
+		zoom: Float::with_val(128, 11858.461261560205),
+		low_x: Float::with_val(128, 0.33992532398246744),
+		low_y: Float::with_val(128, -0.5625025651553807),
+		radius_x: Float::with_val(128, 1.),
+		radius_y: Float::with_val(128, 1.),
+		quality: 2000,
+		bound: 750.0,
+	};
+	loop{
+		int_calculate(&params, 53);
+		loops += 1;
+		println!("loop: {loops}");
+	}
+}	
 
 struct Linspace<'a>{
 	start: &'a Float,
