@@ -1,4 +1,4 @@
-use std::sync::mpsc;
+use std::sync::{Arc, Mutex};
 use threadpool::ThreadPool;
 use std::cmp::{min, max};
 use rug::{Complex, Float, ops::CompleteRound};
@@ -435,7 +435,7 @@ fn calculate(parameters: &Parameters) -> String {
     results
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct IntAtPoint{
 	imag: Float,
 	real: Float,
@@ -491,34 +491,34 @@ pub fn int_calculate(params: &Parameters, precision: u32) -> Storage{
 	
 	
 	let pool = ThreadPool::new(num_cpus::get());
-	let (tx, rx) = mpsc::channel();
+	let values = Arc::new(Mutex::new(vec![]));
 
 	for x in linspace(&params.low_x, &high_x, width, precision){
 		for y in linspace(&params.low_y, &high_y, height, precision){
 			
-			let tx = tx.clone();
 			let q = params.quality;
 			let b = params.bound;
 			let ax = x.clone();
 			let ay = y.clone();
+			let cloned = Arc::clone(&values);
 			pool.execute( move || {
 				let c = Complex::with_val(precision, (&ax, &ay));
-				tx.send(IntAtPoint{
+				let mut vals = cloned.lock().unwrap();
+				vals.push(IntAtPoint{
 							real: ax,
 							imag: ay,
 							value: bounded(&c, q, b, precision),
-						}).expect("error calculating");
+						});
 				});
 		}
 	}	
 	
 	pool.join();
-	drop(tx);
-
 	
 	let mut storage_struct = make_storage(width, height);
+	let rx = values.lock().unwrap();
 	
-	for message in rx{
+	for message in (*rx).clone(){
 		let index = to_usize(&message.real.mul_sub_mul(&params.zoom, &params.low_x, &params.zoom)).unwrap();
 		let indey = to_usize(&message.imag.mul_sub_mul(&params.zoom, &params.low_y, &params.zoom)).unwrap();
 		
