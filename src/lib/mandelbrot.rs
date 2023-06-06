@@ -1,9 +1,11 @@
-use std::sync::{Arc, Mutex};
+use std::sync::mpsc;
 use threadpool::ThreadPool;
-use std::cmp::{min, max};
-use rug::{Complex, Float, ops::CompleteRound};
+//use std::cmp::{min, max};
+use rug::{Float, ops::CompleteRound, Assign};
 use std::convert::TryFrom;
 use num_cpus;
+use std::collections::HashMap;
+use std::mem;
 
 #[cfg(feature = "all")]
 use {
@@ -27,6 +29,12 @@ pub struct Parameters{
 
     pub quality: usize,
 	pub bound: f64,
+}
+
+pub fn test_abs() -> f64 {
+	let a = Float::with_val(53, 3.0);
+	let b = Float::with_val(53, 4.0);
+	abs(&a, &b)
 }
 
 impl Parameters {
@@ -60,91 +68,36 @@ impl Parameters {
 	}
 }
 
-#[cfg(feature = "all")]
-fn talk_to_python() -> std::io::Result<()>{
+fn bounded(real: Float, imag: Float, iterations: usize, bound: f64, precision: u32) -> usize{
 	/*
-	* never refeature = "all"y got this working. ports are hard, but in theory sends stuff 
+	* older variant of the other one. It checks if a point goes above bound in iterations tests
 	*/
-	
-    let host = "127.0.0.1:";
-    let pixel_port = "65432";
-    let param_port = "65431";
-
-    let pixel_hostname = host.to_string() + pixel_port;
-    let param_hostname = host.to_string() + param_port;
-    
-    let mut stream = TcpStream::connect(pixel_hostname).expect("run the renderer smh");
-    
-    println!("i do be listening doe");
-    
-/*    loop{
-        
-         let results = calculate(300.0, -0.5, 0.0, 1.0, 1.0, 510);
-        println!("ok just sending the results over now");
-        stream.write(&results.as_bytes())?;
-        println!( "{:?}", get_params(&param_hostname));
-        break;
-    }*/
-    Ok(())
-}
-
-#[cfg(feature = "all")]
-fn get_params(param_hostname: &str) {
-	/*
-	* goes with talk_to_python
-	*/
-    let listener = TcpListener::bind(param_hostname).unwrap();
-    println!("connected");
-    let mut stream = match listener.accept() {
-        Ok((socket, addr)) => {
-            println!("new client: {:?}", addr);
-            socket
-        }
-        Err(e) => {
-            println!("couldn't get client: {:?}", e);
-            panic!("oh no");
-        }
-    };
-    let mut buf = [0; 32];
-    stream.read(&mut buf).expect("error reading the stream");
-    println!("{:?}", buf);
-}
-
-fn bounded(c: &Complex, iterations: usize, bound: f64, precision: u32) -> usize{
-	/*
-	* older varient of the other one. It checks if a point goes above bound in iterations tests
-	*/
-    let mut z = Complex::with_val(precision, (0.0, 0.0));
     let mut i: usize = 0;
-    loop{
-		z += c;
-		z.square_mut();
-		// the path the code takes if it diverges to infinity
-        if abs(&z) > bound {
-            return i;
-        }
-		// the path the code takes if it stays bounded
-        if i >= iterations{
-            return 0;
-        }
-        i+=1;
-    }
-}
 
-#[cfg(feature = "all")]
-fn bounded_test(c: &Complex, iterations: usize, bound: Float) -> usize{
-	/*
-	* checks if the gradient at a point goes above bound in iterations loops
-	*/
-    let mut z = Complex::with_val(128, (0, 0));
+	let mut real_temp = Float::with_val(precision, 0.0);
+	let mut imag_temp = Float::with_val(precision, 0.0);
 
-    let mut i = 0;
-	let mut last_z;
+	let mut real_temp_temp = Float::with_val(precision, 0.0);
+	let mut imag_temp_temp = Float::with_val(precision, 0.0);
+
     loop{
-		last_z = z.clone();
-        z = z.pow(Complex::with_val(4, (2, 0))) + c;
+	
+		real_temp += &real;
+		imag_temp += &imag;
+
+		real_temp_temp.assign(real_temp.square_ref());
+		imag_temp_temp.assign(imag_temp.square_ref());
+		real_temp_temp -= &imag_temp_temp;
+
+		imag_temp_temp.assign(&imag_temp);
+		imag_temp_temp *= &real_temp;
+		imag_temp_temp *= 2;
+
+		real_temp.assign(&real_temp_temp);
+		imag_temp.assign(&imag_temp_temp);
+
 		// the path the code takes if it diverges to infinity
-        if (last_z.abs() - &z.abs()).real() > &bound {
+        if abs(&real_temp, &imag_temp) > bound {
             return i;
         }
 		// the path the code takes if it stays bounded
@@ -381,64 +334,10 @@ pub fn initcolormap() -> Vec<ReturnColor> {
 	finals
 }
 
-#[cfg(feature = "all")]
-pub fn test_lerp(){
-	/*
-	* makes sure the lerping looks good. could rename it to save_colormap
-	*/
-	let map = initcolormap();
-	let mut values: Vec<u8> = vec![];
-	for i in 0..256{
-		let colors = map[i as usize];
-		
-		values.push(colors.r);
-		values.push(colors.g);
-		values.push(colors.b);
-	}
-	
-	let out_image = RgbImage::from_raw(255, 1, values).unwrap();
-	out_image.save("./cmap.png").unwrap();	
-}
-
-#[cfg(feature = "all")]
-fn calculate(parameters: &Parameters) -> String {
-	/*
-	* single thread calculation of the mandelbrot set. may be faster for small images and single threaded machines
-	*/
-    let low_x = parameters.low_x;
-    let high_x = low_x + 2.0 * parameters.radius_x;
-
-    let low_y = parameters.low_y;
-    let high_y = low_y + 2.0 * parameters.radius_y;
-    
-    let width = ((high_x - low_x) * parameters.zoom) as usize;
-    let height = ((high_y - low_y) * parameters.zoom) as usize;
-
-
-    let reals = linspace::<f64>(low_x,high_x,width);
-    let mut results = String::new();
-    
-    for y in reals{
-        let cs = linspace::<Float>(low_y,high_y,height);
-        for x in cs{
-            let c = Complex::new(x, y);
-            
-            results = results + &bounded_test(&c, parameters.quality, parameters.bound).to_string();
-            results = results + ",";
-        }
-		results = results + "\n";
-    }
-    results = results + &width.to_string();
-    results = results + ",";
-    results = results + &height.to_string();
-    results = results + "d";
-    results
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct IntAtPoint{
-	imag: Float,
-	real: Float,
+	imag: usize,
+	real: usize,
 	value: usize,
 }
 
@@ -473,7 +372,7 @@ fn make_storage(width: usize, height: usize) -> Storage {
 	}
 }
 
-pub fn int_calculate(params: &Parameters, precision: u32) -> Storage{
+pub fn cache_calculate(params: &Parameters, precision: u32) -> Storage{
 	/*
 	* calculates the value at a point in parallel. returns a list of integers which maybe should just be one array
 	*/
@@ -481,8 +380,8 @@ pub fn int_calculate(params: &Parameters, precision: u32) -> Storage{
 	// defining constants for the linspace
 	let two = Float::with_val(precision, 2.0);
 	let aaaa = (&two * &params.zoom).complete(precision);
-	let width: usize = to_usize(&(&aaaa * &params.radius_x).complete(precision)).expect("width is WAY too big");
-	let height: usize = to_usize(&(&aaaa * &params.radius_y).complete(precision)).expect("height is WAY too big");
+	let width: usize = to_usize(&(&aaaa * &params.radius_x).complete(precision));
+	let height: usize = to_usize(&(&aaaa * &params.radius_y).complete(precision));
 	
 	//change these to be mu_add!!! maybe faster!!!!
 	let high_x = Float::with_val(precision, params.radius_x.mul_add_ref(&two, &params.low_x));
@@ -491,124 +390,40 @@ pub fn int_calculate(params: &Parameters, precision: u32) -> Storage{
 	
 	
 	let pool = ThreadPool::new(num_cpus::get());
-	let values = Arc::new(Mutex::new(vec![]));
+	let (tx, rx) = mpsc::channel();
 
 	for x in linspace(&params.low_x, &high_x, width, precision){
 		for y in linspace(&params.low_y, &high_y, height, precision){
+			let tx = tx.clone();
+			let ax = x.clone();
+			let ay = y.clone();
+
+			let imag_clip = to_usize(&ay.clone().mul_sub_mul(&params.zoom, &params.low_y, &params.zoom));
+			let real_clip = to_usize(&ax.clone().mul_sub_mul(&params.zoom, &params.low_x, &params.zoom));
 			
 			let q = params.quality;
 			let b = params.bound;
-			let ax = x.clone();
-			let ay = y.clone();
-			let cloned = Arc::clone(&values);
 			pool.execute( move || {
-				let c = Complex::with_val(precision, (&ax, &ay));
-				let mut vals = cloned.lock().unwrap();
-				vals.push(IntAtPoint{
-							real: ax,
-							imag: ay,
-							value: bounded(&c, q, b, precision),
-						});
-				});
+				tx.send(IntAtPoint {
+							real: real_clip,
+							imag: imag_clip,
+							value: bounded(ax, ay, q, b, precision),
+				}).expect("error calculating");
+			});
 		}
 	}	
 	
 	pool.join();
+	drop(tx);
 	
 	let mut storage_struct = make_storage(width, height);
-	let rx = values.lock().unwrap();
 	
-	for message in (*rx).clone(){
-		let index = to_usize(&message.real.mul_sub_mul(&params.zoom, &params.low_x, &params.zoom)).unwrap();
-		let indey = to_usize(&message.imag.mul_sub_mul(&params.zoom, &params.low_y, &params.zoom)).unwrap();
-		
-		let index = min(index, storage_struct.width);
-		let indey = min(indey, storage_struct.height);
-		storage_struct.insert(index, indey, message.value);
+	for message in rx{
+		storage_struct.insert(message.real, message.imag, message.value);
+
 	}
 	storage_struct
 }
-
-#[cfg(feature ="all")]
-pub fn output_image(params: &Parameters, gamma: isize, path: String) {
-	/*
-	* renders a high quality image. can take a WHILE
-	*/
-	let map = initcolormap();
-	println!("gonna calculate");
-	let values = int_calculate(params, 53);
-	println!("calculated");
-	let width = values.len();
-	let height = values[0].len();
-
-	let mut image_buffer: Vec<u8> = vec!(); 
-	
-	println!("putting it in buffer");
-	for x in 0..width{
-		for y in 0..height{
-			let mut value = values[x as usize][y as usize] as isize;
-			value -= gamma;
-			value = max(0, min(value, 255));
-			let colors = map[value as usize];
-
-			image_buffer.push(colors.r);
-			image_buffer.push(colors.g);
-			image_buffer.push(colors.b);
-	
-		}
-	}
-
-	println!("{:?}", image_buffer);
-	
-	let out_image = RgbImage::from_raw(width.try_into().unwrap(), height.try_into().unwrap(), image_buffer).unwrap();
-	out_image.save(path).unwrap();	
-}
-
-#[cfg(feature = "all")]
-pub fn parse(data: String) -> Vec<Vec<u8>>{
-	/*
-	* literally cannot remember
-	*/
-	let lines = data.split("\n").collect::<Vec<&str>>();
-	
-	let last_line = lines[lines.len()-1].split(",").collect::<Vec<&str>>();
-	let width = last_line[0].parse::<usize>().unwrap();
-	
-	let mut height = last_line[1].to_string();
-	height.pop().unwrap();
-	let height = height.parse::<usize>().unwrap();
-	
-	let mut out: Vec<Vec<u8>> = vec!();
-
-	for i in 0..width{
-		out.push(vec!());
-		let values = lines[i].split(",").collect::<Vec<&str>>();
-		for j in 0..height{
-			out[i].push(values[j].parse::<u8>().unwrap_or_else(|_| 0 ));
-		}
-	}
-	
-
-	out
-}
-
-pub fn heater() {
-	let mut loops = 0;
-	let params = Parameters{
-		zoom: Float::with_val(128, 11858.461261560205),
-		low_x: Float::with_val(128, 0.33992532398246744),
-		low_y: Float::with_val(128, -0.5625025651553807),
-		radius_x: Float::with_val(128, 1.),
-		radius_y: Float::with_val(128, 1.),
-		quality: 2000,
-		bound: 750.0,
-	};
-	loop{
-		int_calculate(&params, 53);
-		loops += 1;
-		println!("loop: {loops}");
-	}
-}	
 
 struct Linspace<'a>{
 	start: &'a Float,
@@ -644,13 +459,10 @@ fn linspace<'a>(low: &'a Float, high: &'a Float, num: usize, precision: u32) -> 
 	}
 }
 
-fn to_usize(input: &Float) -> Option<usize> {
-	input.to_integer().unwrap().to_usize()
+fn to_usize(input: &Float) -> usize {
+	input.to_integer().expect("oopsies").to_usize().unwrap()
 }
 
-fn abs(val: &Complex) -> f64{
-	let real = val.real().to_f64();
-	let imag = val.imag().to_f64();
-	
-	real.powf(2.0) + imag.powf(2.0) 
+fn abs(real: &Float, imag: &Float) -> f64{
+	real.to_f64().powf(2.0) + imag.to_f64().powf(2.0) 
 }

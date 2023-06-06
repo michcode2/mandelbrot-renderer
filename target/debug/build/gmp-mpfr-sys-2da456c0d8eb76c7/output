@@ -1,0 +1,26 @@
+cargo:rerun-if-env-changed=GMP_MPFR_SYS_CACHE
+$ mkdir -p "/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/build/gmp-mpfr-sys-2da456c0d8eb76c7/out/lib"
+$ mkdir -p "/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/build/gmp-mpfr-sys-2da456c0d8eb76c7/out/include"
+$ mkdir -p "/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/build/gmp-mpfr-sys-2da456c0d8eb76c7/out/build/system_libs"
+$ cd "/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/build/gmp-mpfr-sys-2da456c0d8eb76c7/out/build/system_libs"
+$ #Check for system GMP
+$ printf '%s' "/* system_"... > "/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/build/gmp-mpfr-sys-2da456c0d8eb76c7/out/build/system_libs/system_gmp.c"
+$ cd "/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/build/gmp-mpfr-sys-2da456c0d8eb76c7/out/build/system_libs" && "gcc" "-fPIC" "system_gmp.c" "-lgmp" "-o" "system_gmp.exe"
+$ cd "/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/build/gmp-mpfr-sys-2da456c0d8eb76c7/out/build/system_libs" && "/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/build/gmp-mpfr-sys-2da456c0d8eb76c7/out/build/system_libs/system_gmp.exe"
+cargo:limb_bits=64
+$ #Check for system MPFR
+$ printf '%s' "/* system_"... > "/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/build/gmp-mpfr-sys-2da456c0d8eb76c7/out/build/system_libs/system_mpfr.c"
+$ cd "/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/build/gmp-mpfr-sys-2da456c0d8eb76c7/out/build/system_libs" && "gcc" "-fPIC" "system_mpfr.c" "-lmpfr" "-lgmp" "-o" "system_mpfr.exe"
+$ cd "/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/build/gmp-mpfr-sys-2da456c0d8eb76c7/out/build/system_libs" && "/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/build/gmp-mpfr-sys-2da456c0d8eb76c7/out/build/system_libs/system_mpfr.exe"
+$ #Check for system MPC
+$ printf '%s' "/* system_"... > "/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/build/gmp-mpfr-sys-2da456c0d8eb76c7/out/build/system_libs/system_mpc.c"
+$ cd "/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/build/gmp-mpfr-sys-2da456c0d8eb76c7/out/build/system_libs" && "gcc" "-fPIC" "system_mpc.c" "-lmpc" "-lgmp" "-o" "system_mpc.exe"
+$ cd "/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/build/gmp-mpfr-sys-2da456c0d8eb76c7/out/build/system_libs" && "/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/build/gmp-mpfr-sys-2da456c0d8eb76c7/out/build/system_libs/system_mpc.exe"
+$ rm -r "/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/build/gmp-mpfr-sys-2da456c0d8eb76c7/out/build"
+cargo:out_dir=/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/build/gmp-mpfr-sys-2da456c0d8eb76c7/out
+cargo:lib_dir=/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/build/gmp-mpfr-sys-2da456c0d8eb76c7/out/lib
+cargo:include_dir=/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/build/gmp-mpfr-sys-2da456c0d8eb76c7/out/include
+cargo:rustc-link-search=native=/Users/natalie/Documents/code/mandelbrot-renderer/target/debug/build/gmp-mpfr-sys-2da456c0d8eb76c7/out/lib
+cargo:rustc-link-lib=mpc
+cargo:rustc-link-lib=mpfr
+cargo:rustc-link-lib=gmp
