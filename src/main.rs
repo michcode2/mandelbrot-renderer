@@ -5,8 +5,12 @@ use std::time::Instant;
 use rug::{Float, ops::CompleteRound};
 use std::fs::File;
 use std::io::Write;
+use std::collections::HashMap;
 
 fn main() {
+
+	println!("{}", mandelbrot::test_abs());
+
 	let options = eframe::NativeOptions::default();
 	eframe::run_native(
 		"My egui App",
@@ -140,7 +144,7 @@ impl eframe::App for App {
 
 			self.params.low_x -= &self.params.radius_x;
 			self.params.low_y -= &self.params.radius_y;
-			let display = egui_extras::image::RetainedImage::from_color_image("text", render_int(mandelbrot::int_calculate(&self.params, self.precision), self.gamma, &self.map));
+			let display = egui_extras::image::RetainedImage::from_color_image("text", render_int(mandelbrot::cache_calculate(&self.params, self.precision), self.gamma, &self.map));
 			self.params.low_x += &self.params.radius_x;
 			self.params.low_y += &self.params.radius_y;
 			display.show(ui);
