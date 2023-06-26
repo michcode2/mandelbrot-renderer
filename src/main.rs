@@ -1,15 +1,12 @@
-extern crate mandelbrot;
 use eframe::egui;
 use std::cmp::{min, max};
 use std::time::Instant;
 use rug::{Float, ops::CompleteRound};
 use std::fs::File;
 use std::io::Write;
-use std::collections::HashMap;
+
 
 fn main() {
-
-	println!("{}", mandelbrot::test_abs());
 
 	let options = eframe::NativeOptions::default();
 	eframe::run_native(
